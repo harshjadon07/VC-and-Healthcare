@@ -1,45 +1,81 @@
-import { MOCK_PATIENTS, MOCK_RISK_ALERTS, MockPatient } from './mock-data';
+import { getTokenQueue, createTokenTicket, findTokenByNumber, updateTokenStatus, TokenTicket } from './token-queue';
+import { MOCK_RISK_ALERTS } from './mock-data';
 
-// Database Client Provider with fallback in-memory store if DB is initializing
+// Database Client Provider linked directly to live Token Generation & Queue Store
 class DatabaseService {
-  private appointments: MockPatient[] = [...MOCK_PATIENTS];
-
   async getAppointments() {
-    return this.appointments;
+    const queue = getTokenQueue();
+    // Map TokenTicket to expected patient structure
+    return queue.map((t) => ({
+      id: t.tokenNumber,
+      name: t.patientName,
+      age: t.age,
+      gender: t.gender,
+      village: t.village,
+      district: t.district,
+      phone: t.phone,
+      chiefComplaint: t.chiefComplaint,
+      triageLevel: t.triageLevel,
+      status: t.status,
+      dateTime: t.createdAt,
+      vitals: t.vitals,
+      aiSummary: t.aiSummary,
+      symptoms: t.symptoms,
+      patientAdvice: t.patientAdvice,
+      recommendedActions: t.recommendedActions,
+      emergencyAlertTriggered: t.emergencyAlertTriggered,
+      history: [t.prescription ? `Prescription: ${t.prescription}` : "Dynamic Token Patient Record"]
+    }));
   }
 
-  async addAppointment(newAppt: Partial<MockPatient>) {
-    const created: MockPatient = {
-      id: `PAT-${Date.now().toString().slice(-4)}`,
-      name: newAppt.name || "Rural Resident",
-      age: newAppt.age || 45,
-      gender: newAppt.gender || "Female",
-      village: newAppt.village || "Khed Shivapur",
-      district: newAppt.district || "Pune",
-      phone: newAppt.phone || "+91 98000 11223",
-      chiefComplaint: newAppt.chiefComplaint || "Routine consultation",
-      triageLevel: newAppt.triageLevel || 'ROUTINE',
-      status: 'SCHEDULED',
-      dateTime: newAppt.dateTime || '02:30 PM',
-      vitals: newAppt.vitals || { bp: "120/80 mmHg", temp: "98.6 °F", heartRate: "72 bpm", spo2: "98%" },
-      aiSummary: newAppt.aiSummary || "Patient requested routine tele-consultation.",
-      symptoms: newAppt.symptoms || ["General discomfort"],
-      patientAdvice: newAppt.patientAdvice || "Rest and maintain hydration.",
-      recommendedActions: newAppt.recommendedActions || ["Tele-consultation scheduled"],
-      emergencyAlertTriggered: newAppt.triageLevel === 'EMERGENCY',
-      history: ["No prior chronic history"],
-    };
+  async addAppointment(newAppt: any) {
+    const ticket = createTokenTicket({
+      patientName: newAppt.name,
+      age: newAppt.age,
+      gender: newAppt.gender,
+      village: newAppt.village,
+      district: newAppt.district,
+      phone: newAppt.phone,
+      chiefComplaint: newAppt.chiefComplaint,
+      triageLevel: newAppt.triageLevel,
+      vitals: newAppt.vitals,
+      aiSummary: newAppt.aiSummary,
+      symptoms: newAppt.symptoms,
+      patientAdvice: newAppt.patientAdvice,
+      recommendedActions: newAppt.recommendedActions
+    });
 
-    this.appointments.unshift(created);
-    return created;
+    return {
+      id: ticket.tokenNumber,
+      name: ticket.patientName,
+      age: ticket.age,
+      gender: ticket.gender,
+      village: ticket.village,
+      district: ticket.district,
+      phone: ticket.phone,
+      chiefComplaint: ticket.chiefComplaint,
+      triageLevel: ticket.triageLevel,
+      status: ticket.status,
+      dateTime: ticket.createdAt,
+      vitals: ticket.vitals,
+      aiSummary: ticket.aiSummary,
+      symptoms: ticket.symptoms,
+      patientAdvice: ticket.patientAdvice,
+      recommendedActions: ticket.recommendedActions,
+      emergencyAlertTriggered: ticket.emergencyAlertTriggered,
+      history: ["Token Created"]
+    };
   }
 
   async updateAppointmentPrescription(id: string, prescription: string) {
-    const item = this.appointments.find((p) => p.id === id);
-    if (item) {
-      item.status = 'COMPLETED';
-      item.patientAdvice = `Prescription issued: ${prescription}`;
-      return item;
+    const ticket = updateTokenStatus(id, 'COMPLETED', prescription);
+    if (ticket) {
+      return {
+        id: ticket.tokenNumber,
+        name: ticket.patientName,
+        status: 'COMPLETED',
+        patientAdvice: `Prescription issued: ${prescription}`
+      };
     }
     return null;
   }

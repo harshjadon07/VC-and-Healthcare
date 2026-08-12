@@ -17,8 +17,8 @@ interface AuthContextType {
   user: UserProfile | null;
   role: UserRole;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signInWithMockPhone: (phone: string, role: UserRole) => Promise<void>;
+  signInWithGoogle: (selectedRole?: UserRole) => Promise<string>;
+  signInWithMockPhone: (phone: string, role: UserRole) => Promise<string>;
   switchRole: (newRole: UserRole) => void;
   signOutUser: () => void;
 }
@@ -45,36 +45,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (selectedRole: UserRole = role): Promise<string> => {
     setLoading(true);
-    // Standard Google authentication flow profile
-    const mockUser: UserProfile = {
-      uid: `usr-g-${Date.now()}`,
-      name: "Ramesh Patil",
-      email: "ramesh.patil@ruralhealth.org",
-      phone: "+91 98223 45678",
-      role: role,
-      photoURL: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-    };
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: selectedRole, method: 'GOOGLE' }),
+      });
+      const data = await res.json();
+      
+      const profile: UserProfile = {
+        uid: data.user?.id || `usr-g-${Date.now()}`,
+        name: data.user?.name || "Ramesh Patil",
+        email: data.user?.email || "ramesh.patil@ruralhealth.org",
+        phone: "+91 98223 45678",
+        role: selectedRole,
+      };
 
-    setUser(mockUser);
-    localStorage.setItem('seva_auth_user', JSON.stringify(mockUser));
-    setLoading(false);
+      setUser(profile);
+      setRole(selectedRole);
+      localStorage.setItem('seva_auth_user', JSON.stringify(profile));
+      setLoading(false);
+      return data.redirectUrl || (selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient');
+    } catch (err) {
+      console.error("Google login error:", err);
+      setLoading(false);
+      return selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient';
+    }
   };
 
-  const signInWithMockPhone = async (phone: string, selectedRole: UserRole) => {
+  const signInWithMockPhone = async (phone: string, selectedRole: UserRole): Promise<string> => {
     setLoading(true);
-    const mockUser: UserProfile = {
-      uid: `usr-p-${Date.now()}`,
-      name: selectedRole === 'HEALTH_WORKER' ? "ASHA Worker Sarita" : selectedRole === 'DOCTOR' ? "Dr. M. Kulkarni" : "Ramesh Patil",
-      phone: phone || "+91 98223 45678",
-      role: selectedRole,
-    };
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, role: selectedRole, method: 'PHONE' }),
+      });
+      const data = await res.json();
 
-    setUser(mockUser);
-    setRole(selectedRole);
-    localStorage.setItem('seva_auth_user', JSON.stringify(mockUser));
-    setLoading(false);
+      const profile: UserProfile = {
+        uid: data.user?.id || `usr-p-${Date.now()}`,
+        name: data.user?.name || (selectedRole === 'HEALTH_WORKER' ? "ASHA Worker Sarita" : selectedRole === 'DOCTOR' ? "Dr. M. Kulkarni" : "Ramesh Patil"),
+        phone: phone || "+91 98223 45678",
+        role: selectedRole,
+      };
+
+      setUser(profile);
+      setRole(selectedRole);
+      localStorage.setItem('seva_auth_user', JSON.stringify(profile));
+      setLoading(false);
+      return data.redirectUrl || (selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient');
+    } catch (err) {
+      console.error("Phone login error:", err);
+      setLoading(false);
+      return selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient';
+    }
   };
 
   const switchRole = (newRole: UserRole) => {
@@ -89,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOutUser = () => {
     setUser(null);
     localStorage.removeItem('seva_auth_user');
+    document.cookie = 'seva_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
   };
 
   return (

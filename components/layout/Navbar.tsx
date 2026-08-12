@@ -28,30 +28,57 @@ export const Navbar: React.FC<NavbarProps> = ({ currentLang, onLanguageChange })
                 {dict.appName}
               </span>
               <span className="text-xs sm:text-sm font-extrabold text-forest-800">
-                ग्रामीण आरोग्य • AI Health
+                ग्रामीण आरोग्य • AI Health Platform
               </span>
             </div>
           </Link>
 
-          {/* Right Actions: Emergency 108, Language Switcher, Future Menu */}
-          <div className="flex items-center space-x-3">
+          {/* Center Direct Navigation Portals (Desktop) */}
+          <div className="hidden lg:flex items-center space-x-2">
+            <Link
+              href="/patient"
+              className="px-3.5 py-2 rounded-2xl bg-emerald-50 border-2 border-emerald-300 hover:border-forest-700 text-forest-950 font-black text-sm flex items-center space-x-1.5 transition-all shadow-2xs"
+            >
+              <User className="w-4 h-4 text-forest-800" />
+              <span>Patient Portal</span>
+            </Link>
+
+            <Link
+              href="/health-worker"
+              className="px-3.5 py-2 rounded-2xl bg-amber-50 border-2 border-amber-300 hover:border-forest-700 text-amber-950 font-black text-sm flex items-center space-x-1.5 transition-all shadow-2xs"
+            >
+              <Users className="w-4 h-4 text-amber-800" />
+              <span>ASHA Worker</span>
+            </Link>
+
+            <Link
+              href="/doctor"
+              className="px-3.5 py-2 rounded-2xl bg-blue-50 border-2 border-blue-300 hover:border-forest-700 text-blue-950 font-black text-sm flex items-center space-x-1.5 transition-all shadow-2xs"
+            >
+              <Stethoscope className="w-4 h-4 text-blue-800" />
+              <span>Doctor Portal</span>
+            </Link>
+          </div>
+
+          {/* Right Actions: 108 Emergency Call & Language Switcher */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* 108 Emergency Call Button */}
             <a
               href="tel:108"
-              className="flex items-center space-x-2 px-4 py-2.5 bg-red-600 border-2 border-red-700 text-white rounded-2xl text-sm sm:text-base font-black hover:bg-red-700 transition-all shadow-md active:scale-95 animate-pulse shrink-0"
+              className="flex items-center space-x-1.5 px-3.5 py-2.5 bg-red-600 border-2 border-red-700 text-white rounded-2xl text-xs sm:text-base font-black hover:bg-red-700 transition-all shadow-md shrink-0"
             >
-              <PhoneCall className="w-5 h-5 text-white shrink-0" />
+              <PhoneCall className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
               <span>108 Emergency</span>
             </a>
 
             {/* Language Selector */}
-            <div className="flex items-center space-x-2 bg-forest-50 border-2 border-forest-400 px-3.5 py-2 rounded-2xl shrink-0">
-              <Globe className="w-5 h-5 text-forest-800 shrink-0" />
+            <div className="flex items-center space-x-1.5 bg-forest-50 border-2 border-forest-400 px-3 py-2 rounded-2xl shrink-0">
+              <Globe className="w-4 h-4 text-forest-800 shrink-0" />
               <select
                 value={currentLang}
                 onChange={(e) => onLanguageChange(e.target.value as Language)}
                 aria-label="Select Language"
-                className="bg-transparent text-sm sm:text-base font-black text-slate-900 focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent text-xs sm:text-base font-black text-slate-950 focus:outline-none cursor-pointer pr-1"
               >
                 <option value="en" className="font-bold">English</option>
                 <option value="hi" className="font-bold">हिंदी (Hindi)</option>
@@ -60,45 +87,54 @@ export const Navbar: React.FC<NavbarProps> = ({ currentLang, onLanguageChange })
               </select>
             </div>
 
-            {/* Hidden / Future Portals Dropdown Trigger */}
+            {/* Mobile / Collapsible Portal Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2.5 rounded-2xl bg-sand-100 border-2 border-sand-300 text-slate-800 hover:bg-sand-200 transition-all"
-              title="More Portals (Future Use)"
+              className="p-2.5 rounded-2xl bg-sand-100 border-2 border-sand-300 text-slate-800 hover:bg-sand-200 transition-all lg:hidden"
+              title="Toggle Menu"
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Collapsible Menu for Future Portal Access */}
+        {/* Collapsible Menu for Mobile View Direct Portal Access */}
         {isMenuOpen && (
-          <div className="py-4 border-t-2 border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="py-4 border-t-2 border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 lg:hidden">
             <Link
               href="/patient"
               onClick={() => setIsMenuOpen(false)}
-              className="flex items-center space-x-3 p-3 rounded-2xl bg-sand-50 border-2 border-sand-200 hover:border-forest-700 text-slate-900 font-extrabold text-sm"
+              className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 hover:border-forest-700 text-slate-900 font-black text-sm shadow-2xs"
             >
-              <User className="w-5 h-5 text-forest-800" />
-              <span>Patient Dashboard</span>
+              <div className="flex items-center space-x-2">
+                <User className="w-5 h-5 text-forest-800" />
+                <span>Patient Dashboard</span>
+              </div>
+              <span className="text-xs text-forest-800 font-mono font-bold">/patient →</span>
             </Link>
 
             <Link
               href="/health-worker"
               onClick={() => setIsMenuOpen(false)}
-              className="flex items-center space-x-3 p-3 rounded-2xl bg-sand-50 border-2 border-sand-200 hover:border-forest-700 text-slate-900 font-extrabold text-sm"
+              className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-50 border-2 border-amber-300 hover:border-forest-700 text-slate-900 font-black text-sm shadow-2xs"
             >
-              <Users className="w-5 h-5 text-forest-800" />
-              <span>ASHA Health Worker</span>
+              <div className="flex items-center space-x-2">
+                <Users className="w-5 h-5 text-amber-800" />
+                <span>ASHA Health Worker</span>
+              </div>
+              <span className="text-xs text-amber-800 font-mono font-bold">/health-worker →</span>
             </Link>
 
             <Link
               href="/doctor"
               onClick={() => setIsMenuOpen(false)}
-              className="flex items-center space-x-3 p-3 rounded-2xl bg-sand-50 border-2 border-sand-200 hover:border-forest-700 text-slate-900 font-extrabold text-sm"
+              className="flex items-center justify-between p-3.5 rounded-2xl bg-blue-50 border-2 border-blue-300 hover:border-forest-700 text-slate-900 font-black text-sm shadow-2xs"
             >
-              <Stethoscope className="w-5 h-5 text-forest-800" />
-              <span>Doctor Portal</span>
+              <div className="flex items-center space-x-2">
+                <Stethoscope className="w-5 h-5 text-blue-800" />
+                <span>Doctor Telemedicine</span>
+              </div>
+              <span className="text-xs text-blue-800 font-mono font-bold">/doctor →</span>
             </Link>
           </div>
         )}

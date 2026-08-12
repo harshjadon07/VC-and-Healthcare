@@ -6,11 +6,11 @@ export interface SafetyEngineResult {
   recommendedActions: string[];
   firstAidInstructions: string[];
   emergencyAlertTriggered: boolean;
+  attachedFile?: string;
 }
 
 export type SupportedLang = 'en' | 'hi' | 'mr' | 'ta';
 
-// Multilingual First-Aid Protocol Lookup Table
 export const FIRST_AID_PROTOCOLS: Record<SupportedLang, Record<string, string[]>> = {
   en: {
     CARDIAC: [
@@ -130,12 +130,14 @@ export const FIRST_AID_PROTOCOLS: Record<SupportedLang, Record<string, string[]>
   }
 };
 
-// Deterministic Red-Flag Keywords Inspector
-export function evaluateClinicalSafety(symptomsQuery: string, langInput: string = 'en'): SafetyEngineResult {
+export function evaluateClinicalSafety(
+  symptomsQuery: string,
+  langInput: string = 'en',
+  attachmentName?: string
+): SafetyEngineResult {
   const query = symptomsQuery.toLowerCase();
   const lang: SupportedLang = (['en', 'hi', 'mr', 'ta'].includes(langInput) ? langInput : 'en') as SupportedLang;
 
-  // 1. Red-Flag Emergency Keywords
   const isChestPain = /chest pain|chest pressure|jaw pain|left arm pain|heart attack|छाती|छातीत दर्द|मார்பு வலி/i.test(query);
   const isBreathless = /shortness of breath|breath|gasping|cannot breathe|सांस|श्वास|மூச்சுத்திணறல்/i.test(query);
   const isSevereBleeding = /bleeding|hemorrhage|blood loss|खून|रक्त|இரத்தம்/i.test(query);
@@ -144,6 +146,8 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
   const isStiffNeckFever = /stiff neck|neck stiffness|delirium/i.test(query);
 
   const isEmergencyTriggered = isChestPain || isBreathless || isSevereBleeding || isUnconscious || isVenomousBite || isStiffNeckFever;
+
+  let fileNote = attachmentName ? ` [Attached File: ${attachmentName}]` : '';
 
   if (isEmergencyTriggered) {
     let firstAidKey = 'CARDIAC';
@@ -156,7 +160,7 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
     if (lang === 'hi') {
       return {
         triageLevel: 'EMERGENCY',
-        summary: "गंभीर आपातकालीन चेतावनी: मरीज़ में गंभीर आपातकालीन लक्षण दिखाई दिए हैं। तुरंत 108 एम्बुलेंस और अस्पताल को अलर्ट भेजा गया है।",
+        summary: `गंभीर आपातकालीन चेतावनी${fileNote}: मरीज़ में गंभीर आपातकालीन लक्षण दिखाई दिए हैं। तुरंत 108 एम्बुलेंस और अस्पताल को अलर्ट भेजा गया है।`,
         patientAdvice: "अति आवश्यक: तुरंत आराम करें। बिल्कुल भी न चलें। सहायता तुरंत भेजी जा रही है। 108 डायल करें।",
         symptomsDetected: ["गंभीर आपातकालीन लक्षण", "हृदय / सांस / चोट संबंधी खतरा"],
         recommendedActions: [
@@ -165,14 +169,15 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
           "आपातकालीन फोन नंबर को चालू रखें"
         ],
         firstAidInstructions: firstAid,
-        emergencyAlertTriggered: true
+        emergencyAlertTriggered: true,
+        attachedFile: attachmentName
       };
     }
 
     if (lang === 'mr') {
       return {
         triageLevel: 'EMERGENCY',
-        summary: "गंभीर आणीबाणी इशारा: रुग्णामध्ये गंभीर आणीबाणीची लक्षणे आढळली आहेत. त्वरित 108 रुग्णवाहिका आणि आरोग्य केंद्राला संदेश पाठवला आहे.",
+        summary: `गंभीर आणीबाणी इशारा${fileNote}: रुग्णामध्ये गंभीर आणीबाणीची लक्षणे आढळली आहेत. त्वरित 108 रुग्णवाहिका आणि आरोग्य केंद्राला संदेश पाठवला आहे.`,
         patientAdvice: "अत्यंत महत्त्वाचे: ताबडतोब विश्रांती घ्या. अजिबात चालू नका. मदत लगेच पाठवली जात आहे. 108 वर कॉल करा.",
         symptomsDetected: ["गंभीर आणीबाणी लक्षणे", "हृदय / श्वास / दुखापत धोका"],
         recommendedActions: [
@@ -181,14 +186,15 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
           "फोन संपर्क चालू ठेवा"
         ],
         firstAidInstructions: firstAid,
-        emergencyAlertTriggered: true
+        emergencyAlertTriggered: true,
+        attachedFile: attachmentName
       };
     }
 
     if (lang === 'ta') {
       return {
         triageLevel: 'EMERGENCY',
-        summary: "அவசர சுகாதார எச்சரிக்கை: நோயாளிக்கு கடுமையான அவசர அறிகுறிகள் உள்ளன. உடனடியாக 108 ஆம்புலன்ஸ் எச்சரிக்கை அனுப்பப்பட்டது.",
+        summary: `அவசர சுகாதார எச்சரிக்கை${fileNote}: நோயாளிக்கு கடுமையான அவசர அறிகுறிகள் உள்ளன. உடனடியாக 108 ஆம்புலன்ஸ் எச்சரிக்கை அனுப்பப்பட்டது.`,
         patientAdvice: "மிக முக்கியம்: உடனடியாக ஓய்வெடுக்கவும். நடப்பதைத் தவிர்க்கவும். உதவி உடனே அனுப்பப்படுகிறது. 108 ஐ அழைக்கவும்.",
         symptomsDetected: ["கடுமையான அவசர அறிகுறிகள்", "இதயம் / மூச்சு ஆபத்து"],
         recommendedActions: [
@@ -197,14 +203,14 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
           "ஆஷா பணியாளரைத் தொடர்பு கொள்ளவும்"
         ],
         firstAidInstructions: firstAid,
-        emergencyAlertTriggered: true
+        emergencyAlertTriggered: true,
+        attachedFile: attachmentName
       };
     }
 
-    // Default English
     return {
       triageLevel: 'EMERGENCY',
-      summary: "CRITICAL SAFETY ALERT: Patient presents with high-risk emergency symptoms. Immediate 108 ambulance dispatch and PHC emergency alert activated.",
+      summary: `CRITICAL SAFETY ALERT${fileNote}: Patient presents with high-risk emergency symptoms. Immediate 108 ambulance dispatch and PHC emergency alert activated.`,
       patientAdvice: "CRITICAL: Rest immediately. Do not exert yourself or walk. Help is being dispatched right now. Call 108.",
       symptomsDetected: ["Acute Emergency Symptoms", "Cardiac / Dyspnea / Severe Trauma Risk"],
       recommendedActions: [
@@ -213,7 +219,8 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
         "Keep emergency contact phone line open"
       ],
       firstAidInstructions: firstAid,
-      emergencyAlertTriggered: true
+      emergencyAlertTriggered: true,
+      attachedFile: attachmentName
     };
   }
 
@@ -225,7 +232,7 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
     if (lang === 'hi') {
       return {
         triageLevel: 'URGENT',
-        summary: "तत्काल चिकित्सा परामर्श: मरीज़ को बुखार, ठंड लगना या पेट की समस्या है। आज ही डॉक्टर से परामर्श लें।",
+        summary: `तत्काल चिकित्सा परामर्श${fileNote}: मरीज़ को बुखार, ठंड लगना या पेट की समस्या है। अपलोड की गई मेडिकल रिपोर्ट/छवि के साथ डॉक्टर से परामर्श लें।`,
         patientAdvice: "ओआरएस (ORS) या उबला हुआ गुनगुना पानी पीते रहें। हवादार जगह पर आराम करें और हल्का भोजन लें।",
         symptomsDetected: ["तेज बुखार / ठंड लगना", "शरीर में बेचैनी"],
         recommendedActions: [
@@ -233,14 +240,15 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
           "मलेरिया और डेंगू की जांच (RDT) निकटतम आंगनवाड़ी या स्वास्थ्य केंद्र पर कराएं"
         ],
         firstAidInstructions: firstAid,
-        emergencyAlertTriggered: false
+        emergencyAlertTriggered: false,
+        attachedFile: attachmentName
       };
     }
 
     if (lang === 'mr') {
       return {
         triageLevel: 'URGENT',
-        summary: "तातडीचा वैद्यकीय सल्ला: रुग्णाला ताप, थंडी किंवा पोटाचा त्रास आहे. आजच डॉक्टरांचा सल्ला घ्या.",
+        summary: `तातडीचा वैद्यकीय सल्ला${fileNote}: रुग्णाला ताप, थंडी किंवा पोटाचा त्रास आहे. अपलोड केलेल्या वैद्यकीय अहवालासह आजच डॉक्टरांचा सल्ला घ्या.`,
         patientAdvice: "ओआरएस (ORS) किंवा उकळलेले कोमट पाणी प्या. हवेशीर जागी विश्रांती घ्या व हलका आहार घ्या.",
         symptomsDetected: ["ताप / थंडी वाजणे", "शारीरिक अस्वस्थता"],
         recommendedActions: [
@@ -248,14 +256,15 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
           "मलेरिया व डेंग्यूची तपासणी जवळच्या आरोग्य केंद्रात करा"
         ],
         firstAidInstructions: firstAid,
-        emergencyAlertTriggered: false
+        emergencyAlertTriggered: false,
+        attachedFile: attachmentName
       };
     }
 
     if (lang === 'ta') {
       return {
         triageLevel: 'URGENT',
-        summary: "அவசர மருத்துவ மதிப்பீடு: நோயாளிக்கு காய்ச்சல் அல்லது வயிற்றுப் பிரச்சனை உள்ளது. இன்றே மருத்துவரை அணுகவும்.",
+        summary: `அவசர மருத்துவ மதிப்பீடு${fileNote}: நோயாளிக்கு காய்ச்சல் அல்லது வயிற்றுப் பிரச்சனை உள்ளது. பதிவேற்றப்பட்ட அறிக்கையுடன் இன்றே மருத்துவரை அணுகவும்.`,
         patientAdvice: "ORS அல்லது கொதிக்கவைத்த மிதமான நீரைக் குடிக்கவும். காற்றோட்டமான இடத்தில் ஓய்வெடுக்கவும்.",
         symptomsDetected: ["அதிக காய்ச்சல்", "உடல் அசதி"],
         recommendedActions: [
@@ -263,13 +272,14 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
           "மலேரியா மற்றும் டெங்கு பரிசோதனை செய்யவும்"
         ],
         firstAidInstructions: firstAid,
-        emergencyAlertTriggered: false
+        emergencyAlertTriggered: false,
+        attachedFile: attachmentName
       };
     }
 
     return {
       triageLevel: 'URGENT',
-      summary: "URGENT CLINICAL EVALUATION: Patient presents with acute symptomatic fever/gastrointestinal distress. Requires same-day PHC tele-consultation.",
+      summary: `URGENT CLINICAL EVALUATION${fileNote}: Patient presents with acute symptomatic fever/gastrointestinal distress. Image/document attached and sent to doctor queue.`,
       patientAdvice: "Drink plenty of ORS or boiled lukewarm water. Rest in a well-ventilated area and avoid heavy food.",
       symptomsDetected: ["High fever / chills", "Systemic discomfort"],
       recommendedActions: [
@@ -277,7 +287,8 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
         "Get Rapid Diagnostic Test (RDT) for Malaria & Dengue at nearest Anganwadi"
       ],
       firstAidInstructions: firstAid,
-      emergencyAlertTriggered: false
+      emergencyAlertTriggered: false,
+      attachedFile: attachmentName
     };
   }
 
@@ -285,7 +296,7 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
   if (lang === 'hi') {
     return {
       triageLevel: 'ROUTINE',
-      summary: "सामान्य स्वास्थ्य जांच: मरीज़ में हल्के लक्षण हैं। सामान्य देखरेख की सलाह दी जाती है।",
+      summary: `सामान्य स्वास्थ्य जांच${fileNote}: मरीज़ में हल्के लक्षण हैं। अपलोड की गई रिपोर्ट/छवि का क्लिनिकल रिकॉर्ड में संकलन किया गया है।`,
       patientAdvice: "पर्याप्त पानी पीते रहें, पौष्टिक आहार लें और अगले 48 घंटे तक लक्षणों पर ध्यान दें।",
       symptomsDetected: ["हल्के लक्षण"],
       recommendedActions: [
@@ -296,14 +307,15 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
         "प्रतिदिन 2-3 लीटर साफ पानी पीएं",
         "पर्याप्त आराम करें"
       ],
-      emergencyAlertTriggered: false
+      emergencyAlertTriggered: false,
+      attachedFile: attachmentName
     };
   }
 
   if (lang === 'mr') {
     return {
       triageLevel: 'ROUTINE',
-      summary: "सामान्य आरोग्य तपासणी: रुग्णामध्ये सौम्य लक्षणे आहेत. रोजची काळजी घेण्याचा सल्ला दिला जातो.",
+      summary: `सामान्य आरोग्य तपासणी${fileNote}: रुग्णामध्ये सौम्य लक्षणे आहेत. अपलोड केलेले वैद्यकीय दस्तऐवज नोंदीत जोडले गेले आहे.`,
       patientAdvice: "भरपूर पाणी प्या, पौष्टिक आहार घ्या आणि पुढील 48 तास लक्षणांवर लक्ष ठेवा.",
       symptomsDetected: ["सौम्य लक्षणे"],
       recommendedActions: [
@@ -314,14 +326,15 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
         "रोज २-३ लिटर स्वच्छ पाणी प्या",
         "योग्य विश्रांती घ्या"
       ],
-      emergencyAlertTriggered: false
+      emergencyAlertTriggered: false,
+      attachedFile: attachmentName
     };
   }
 
   if (lang === 'ta') {
     return {
       triageLevel: 'ROUTINE',
-      summary: "சாதாரண மருத்துவ பரிசோதனை: நோயாளிக்கு லேசான அறிகுறிகள் உள்ளன. சாதாரண பராமரிப்பு பரிந்துரைக்கப்படுகிறது.",
+      summary: `சாதாரண மருத்துவ பரிசோதனை${fileNote}: நோயாளிக்கு லேசான அறிகுறிகள் உள்ளன. பதிவேற்றப்பட்ட படம் மருத்துவப் பதிவில் சேர்க்கப்பட்டுள்ளது.`,
       patientAdvice: "போதிய அளவு தண்ணீர் குடிக்கவும், சத்தான உணவை உட்கொள்ளவும், 48 மணிநேரம் அறிகுறிகளைக் கண்காணிக்கவும்.",
       symptomsDetected: ["லேசான அறிகுறிகள்"],
       recommendedActions: [
@@ -332,13 +345,14 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
         "தினமும் 2-3 லிட்டர் நீர் குடிக்கவும்",
         "நன்கு ஓய்வெடுக்கவும்"
       ],
-      emergencyAlertTriggered: false
+      emergencyAlertTriggered: false,
+      attachedFile: attachmentName
     };
   }
 
   return {
     triageLevel: 'ROUTINE',
-    summary: "ROUTINE ASSESSMENT: Patient reports mild, non-emergency symptoms. Routine health monitoring advised.",
+    summary: `ROUTINE ASSESSMENT${fileNote}: Patient reports mild, non-emergency symptoms. Attached document saved to clinical record.`,
     patientAdvice: "Maintain adequate hydration, eat balanced meals, and monitor symptoms over the next 48 hours.",
     symptomsDetected: ["Mild non-acute symptoms"],
     recommendedActions: [
@@ -349,6 +363,7 @@ export function evaluateClinicalSafety(symptomsQuery: string, langInput: string 
       "Drink 2-3 liters of clean water daily",
       "Rest adequately"
     ],
-    emergencyAlertTriggered: false
+    emergencyAlertTriggered: false,
+    attachedFile: attachmentName
   };
 }

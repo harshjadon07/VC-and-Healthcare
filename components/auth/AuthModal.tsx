@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PhoneCall, ShieldCheck, ArrowRight, Lock, CheckCircle2 } from 'lucide-react';
+import { PhoneCall, ShieldCheck, ArrowRight, Lock, CheckCircle2, User, Users, Stethoscope } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { useAuth, UserRole } from '@/context/AuthContext';
@@ -29,10 +29,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
-    await signInWithGoogle();
+    const targetUrl = await signInWithGoogle(selectedRole);
     setIsSubmitting(false);
     onClose();
-    if (redirectPath) window.location.href = redirectPath;
+    window.location.href = redirectPath || targetUrl;
   };
 
   const handleSendOtp = (e: React.FormEvent) => {
@@ -43,21 +43,80 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode !== '123456' && otpCode.length < 4) return;
     setIsSubmitting(true);
-    await signInWithMockPhone(phone, selectedRole);
+    const targetUrl = await signInWithMockPhone(phone, selectedRole);
     setIsSubmitting(false);
     onClose();
-    if (redirectPath) window.location.href = redirectPath;
+    window.location.href = redirectPath || targetUrl;
+  };
+
+  const handleDirectDemoLogin = async (role: UserRole) => {
+    setSelectedRole(role);
+    setIsSubmitting(true);
+    const targetUrl = await signInWithMockPhone('+91 98223 45678', role);
+    setIsSubmitting(false);
+    onClose();
+    window.location.href = targetUrl;
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Access SevaHealth Portal">
       <div className="space-y-5">
+        
+        {/* 1-TAP DEMO QUICK LOGIN BUTTONS */}
+        <div>
+          <label className="text-xs font-black text-forest-900 uppercase tracking-wider block mb-2">
+            ⚡ 1-Tap Quick Demo Login (Instant Dashboard Redirect):
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => handleDirectDemoLogin('PATIENT')}
+              className="p-3 bg-emerald-100 border-2 border-emerald-400 hover:bg-emerald-200 text-forest-950 rounded-2xl text-left font-black transition-all flex flex-col justify-between"
+            >
+              <div className="flex items-center space-x-1.5 text-xs text-forest-800 font-bold mb-1">
+                <User className="w-4 h-4 text-forest-800" />
+                <span>Patient</span>
+              </div>
+              <span className="text-sm font-black">Patient Portal →</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDirectDemoLogin('HEALTH_WORKER')}
+              className="p-3 bg-amber-100 border-2 border-amber-400 hover:bg-amber-200 text-amber-950 rounded-2xl text-left font-black transition-all flex flex-col justify-between"
+            >
+              <div className="flex items-center space-x-1.5 text-xs text-amber-800 font-bold mb-1">
+                <Users className="w-4 h-4 text-amber-800" />
+                <span>ASHA Worker</span>
+              </div>
+              <span className="text-sm font-black">ASHA Center →</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDirectDemoLogin('DOCTOR')}
+              className="p-3 bg-blue-100 border-2 border-blue-400 hover:bg-blue-200 text-blue-950 rounded-2xl text-left font-black transition-all flex flex-col justify-between"
+            >
+              <div className="flex items-center space-x-1.5 text-xs text-blue-800 font-bold mb-1">
+                <Stethoscope className="w-4 h-4 text-blue-800" />
+                <span>Tele-Doctor</span>
+              </div>
+              <span className="text-sm font-black">Doctor Hub →</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="relative border-t border-slate-200 text-center my-3">
+          <span className="bg-white px-3 text-xs font-black text-slate-400 uppercase tracking-widest relative -top-2.5">
+            or authenticate with
+          </span>
+        </div>
+
         {/* Role Picker */}
         <div>
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-            1. Select Your Clinical Role
+            Select Your Clinical Role:
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -69,9 +128,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 key={role.id}
                 type="button"
                 onClick={() => setSelectedRole(role.id as UserRole)}
-                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
+                className={`py-2 px-3 rounded-xl text-xs font-black transition-all border-2 ${
                   selectedRole === role.id
-                    ? 'bg-forest-800 text-white border-forest-900 shadow-xs'
+                    ? 'bg-forest-800 text-white border-forest-950 shadow-xs'
                     : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                 }`}
               >
@@ -84,26 +143,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Method Toggle: Google vs Phone OTP */}
         <div>
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-            2. Choose Sign-In Method
+            Choose Sign-In Method:
           </label>
-          <div className="flex border border-slate-300 rounded-lg p-1 bg-slate-100">
+          <div className="flex border-2 border-slate-300 rounded-xl p-1 bg-slate-100">
             <button
               type="button"
               onClick={() => setAuthMethod('GOOGLE')}
-              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+              className={`flex-1 py-2 text-xs font-black rounded-lg transition-all ${
                 authMethod === 'GOOGLE' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
               }`}
             >
-              Google Account
+              Google Account API
             </button>
             <button
               type="button"
               onClick={() => setAuthMethod('PHONE')}
-              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+              className={`flex-1 py-2 text-xs font-black rounded-lg transition-all ${
                 authMethod === 'PHONE' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600'
               }`}
             >
-              Phone OTP (108/Rural)
+              Phone OTP API (108/Rural)
             </button>
           </div>
         </div>
@@ -116,7 +175,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               size="lg"
               onClick={handleGoogleSignIn}
               disabled={isSubmitting}
-              className="w-full text-slate-900 border-slate-300 hover:bg-slate-100 py-3 font-bold"
+              className="w-full text-slate-900 border-2 border-slate-300 hover:bg-slate-100 py-3.5 font-black text-base"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -124,7 +183,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
               </svg>
-              Sign in with Google
+              Sign in with Google API →
             </Button>
           </div>
         )}
@@ -135,9 +194,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {!otpSent ? (
               <form onSubmit={handleSendOtp} className="space-y-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Mobile Phone Number</label>
+                  <label className="text-xs font-black text-slate-700 block mb-1">Mobile Phone Number</label>
                   <div className="flex">
-                    <span className="inline-flex items-center px-3 text-xs font-bold bg-slate-100 border border-r-0 border-slate-300 rounded-l-lg text-slate-600">
+                    <span className="inline-flex items-center px-3 text-xs font-black bg-slate-100 border border-r-0 border-slate-300 rounded-l-xl text-slate-600">
                       +91
                     </span>
                     <input
@@ -146,26 +205,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="98223 45678"
-                      className="flex-1 text-xs font-bold p-2.5 bg-white border border-slate-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-forest-700"
+                      className="flex-1 text-sm font-extrabold p-3 bg-white border border-slate-300 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-forest-700"
                     />
                   </div>
                 </div>
 
-                <Button type="submit" variant="primary" size="md" className="w-full">
+                <Button type="submit" variant="primary" size="md" className="w-full text-base font-black py-3">
                   Send OTP SMS Code →
                 </Button>
               </form>
             ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-3 bg-emerald-50/60 p-4 rounded-xl border border-emerald-200">
+              <form onSubmit={handleVerifyOtp} className="space-y-3 bg-emerald-50 p-4 rounded-2xl border-2 border-emerald-300">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-forest-900">OTP Sent to +91 {phone}</span>
-                  <button type="button" onClick={() => setOtpSent(false)} className="text-forest-700 underline font-bold">
+                  <span className="font-black text-forest-900">OTP Sent to +91 {phone}</span>
+                  <button type="button" onClick={() => setOtpSent(false)} className="text-forest-800 underline font-black">
                     Edit Phone
                   </button>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Enter 6-Digit OTP Code</label>
+                  <label className="text-xs font-black text-slate-700 block mb-1">Enter OTP Code</label>
                   <input
                     type="text"
                     required
@@ -173,14 +232,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
                     placeholder="Enter 123456"
-                    className="w-full text-center text-lg font-mono font-black tracking-widest p-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-700"
+                    className="w-full text-center text-xl font-mono font-black tracking-widest p-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-700"
                   />
-                  <span className="text-[11px] text-slate-500 block mt-1">
-                    Demo OTP code: <code className="font-bold text-forest-800">123456</code>
+                  <span className="text-xs text-slate-600 block mt-1 font-bold">
+                    Demo OTP code: <code className="font-black text-forest-800">123456</code>
                   </span>
                 </div>
 
-                <Button type="submit" variant="primary" size="md" className="w-full">
+                <Button type="submit" variant="primary" size="md" className="w-full text-base font-black py-3">
                   Verify & Sign In →
                 </Button>
               </form>
@@ -188,8 +247,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        <div className="text-[11px] text-slate-500 text-center font-medium border-t border-slate-100 pt-3">
-          🔒 Secure authentication governed by ABHA & SevaHealth Safety Guidelines.
+        <div className="text-xs text-slate-600 text-center font-bold border-t border-slate-200 pt-3">
+          🔒 Governed by SevaHealth ABHA & Health API Authentication Guidelines.
         </div>
       </div>
     </Modal>

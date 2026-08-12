@@ -2,24 +2,26 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Bot, Calendar, Users, PhoneCall, AlertTriangle, CheckCircle2, Volume2, ShieldCheck } from 'lucide-react';
+import { Bot, Calendar, Users, PhoneCall, AlertTriangle, CheckCircle2, Volume2, ShieldCheck, Ticket } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { ActionCard } from '@/components/patient/ActionCard';
 import { RiskMapPlaceholder } from '@/components/patient/RiskMapPlaceholder';
+import { TokenAuthLookup } from '@/components/patient/TokenAuthLookup';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Language, dictionaries } from '@/lib/i18n/dictionary';
-import { useAuth } from '@/context/AuthContext';
 
 export default function PatientDashboard() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
   const [activeModal, setActiveModal] = useState<'BOOK' | 'FAMILY' | 'EMERGENCY' | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [symptomText, setSymptomText] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState('Dr. Kulkarni - General Medicine & PHC Officer');
-  const { user } = useAuth();
+  const [patientName, setPatientName] = useState('Ramesh Patil');
+  const [village, setVillage] = useState('Khed Shivapur');
 
   const dict = dictionaries[currentLang] || dictionaries.en;
 
@@ -31,35 +33,17 @@ export default function PatientDashboard() {
       const triageRes = await fetch('/api/ai/triage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symptoms: symptomText, language: currentLang }),
+        body: JSON.stringify({
+          symptoms: symptomText,
+          language: currentLang,
+          patientName,
+          village
+        }),
       });
       const triageData = await triageRes.json();
 
-      await fetch('/api/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: user?.name || "Ramesh Patil",
-          age: 52,
-          gender: "Male",
-          village: "Khed Shivapur",
-          district: "Pune",
-          phone: user?.phone || "+91 98223 45678",
-          chiefComplaint: symptomText,
-          triageLevel: triageData.triageLevel || 'ROUTINE',
-          aiSummary: triageData.summary || "Booked via Tele-Clinic Portal",
-          symptoms: triageData.symptomsDetected || [symptomText],
-          patientAdvice: triageData.patientAdvice,
-          recommendedActions: triageData.recommendedActions,
-        }),
-      });
-
+      setGeneratedToken(triageData.tokenNumber || 'SEVA-TK-948120');
       setBookingSuccess(true);
-      setTimeout(() => {
-        setBookingSuccess(false);
-        setActiveModal(null);
-        setSymptomText('');
-      }, 2000);
     } catch (err) {
       console.error("Booking error:", err);
       setBookingSuccess(true);
@@ -78,15 +62,15 @@ export default function PatientDashboard() {
             <div className="space-y-2">
               <div className="flex items-center space-x-3">
                 <span className="px-3 py-1 bg-emerald-200 text-forest-950 text-sm font-black rounded-full border border-emerald-400">
-                  ABHA ID LINKED
+                  DIGITAL HEALTH TICKET SYSTEM
                 </span>
-                <span className="text-sm font-black text-slate-600 font-mono">ID: 91-8823-4412</span>
+                <span className="text-sm font-black text-slate-600 font-mono">SEVA-TK Token Engine</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-black text-slate-950">
                 {dict.patientDashboard}
               </h1>
               <p className="text-base sm:text-lg text-slate-800 font-extrabold">
-                Welcome back, <span className="text-forest-900 font-black">{user?.name || 'Ramesh Patil'}</span> (Khed Shivapur Gram).
+                Dynamic queue management with unique patient token authentication numbers.
               </p>
             </div>
 
@@ -103,6 +87,11 @@ export default function PatientDashboard() {
             </div>
           </div>
 
+          {/* 1. UNIQUE TOKEN AUTHENTICATION LOOKUP COMPONENT */}
+          <section>
+            <TokenAuthLookup />
+          </section>
+
           {/* Voice Prompt Assistance Card */}
           <div className="bg-forest-800 text-white p-6 rounded-3xl border-4 border-forest-950 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-4">
@@ -112,7 +101,7 @@ export default function PatientDashboard() {
               <div>
                 <h3 className="text-xl sm:text-2xl font-black">Need Help? Speak to AI Doctor</h3>
                 <p className="text-base font-extrabold opacity-90">
-                  Tap button to describe symptoms in plain text or regional voice.
+                  Tap button to describe symptoms and receive your unique Token Number.
                 </p>
               </div>
             </div>
@@ -143,7 +132,7 @@ export default function PatientDashboard() {
                 title={dict.bookAppointmentCard}
                 description={dict.bookAppointmentDesc}
                 icon={Calendar}
-                badgeText="Tele-Clinic"
+                badgeText="Issue Token"
                 onClick={() => setActiveModal('BOOK')}
               />
 
@@ -151,7 +140,7 @@ export default function PatientDashboard() {
                 title={dict.familyRecordsCard}
                 description={dict.familyRecordsDesc}
                 icon={Users}
-                badgeText="4 Family Members"
+                badgeText="Digital Group"
                 onClick={() => setActiveModal('FAMILY')}
               />
 
@@ -176,38 +165,47 @@ export default function PatientDashboard() {
       {/* Book Appointment Modal */}
       <Modal
         isOpen={activeModal === 'BOOK'}
-        onClose={() => setActiveModal(null)}
-        title="Schedule Rural Doctor Consultation"
+        onClose={() => {
+          setActiveModal(null);
+          setBookingSuccess(false);
+        }}
+        title="Issue Patient Unique Token Ticket"
       >
         <form onSubmit={handleBookSubmit} className="space-y-5">
           {bookingSuccess ? (
-            <div className="p-6 bg-emerald-100 border-4 border-emerald-400 text-emerald-950 rounded-2xl text-center font-black text-lg space-y-2">
+            <div className="p-6 bg-emerald-100 border-4 border-emerald-400 text-emerald-950 rounded-2xl text-center font-black text-lg space-y-3">
               <CheckCircle2 className="w-12 h-12 text-emerald-800 mx-auto" />
-              <p>Appointment Booked Successfully!</p>
-              <p className="text-base font-extrabold text-slate-800">
-                Confirmed with {selectedDoctor.split('-')[0]} for today at 02:30 PM.
+              <p className="text-2xl">Unique Token Ticket Generated!</p>
+              <div className="p-4 bg-white rounded-2xl border-2 border-emerald-500 text-2xl font-mono font-black text-forest-950">
+                🎫 {generatedToken}
+              </div>
+              <p className="text-sm font-extrabold text-slate-800">
+                Keep this token number safe. You can use it in the Token Auth search bar to track your queue position.
               </p>
+              <Button type="button" variant="primary" size="md" onClick={() => setActiveModal(null)} className="mt-2 font-black">
+                Done
+              </Button>
             </div>
           ) : (
             <>
               <div>
-                <label className="text-base font-black text-slate-900 block mb-2">Select Specialty / Doctor</label>
-                <select
-                  value={selectedDoctor}
-                  onChange={(e) => setSelectedDoctor(e.target.value)}
+                <label className="text-base font-black text-slate-900 block mb-2">Patient Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={patientName}
+                  onChange={(e) => setPatientName(e.target.value)}
                   className="w-full text-base font-black p-4 bg-white border-2 border-slate-400 rounded-xl focus:outline-none focus:ring-4 focus:ring-forest-800"
-                >
-                  <option value="Dr. Kulkarni - General Medicine & PHC Officer">Dr. Kulkarni - General Medicine & PHC Officer (Available Today)</option>
-                  <option value="Dr. Ananya Sharma - Maternal & Pediatrics Specialist">Dr. Ananya Sharma - Maternal & Pediatrics Specialist</option>
-                  <option value="Dr. Vikram Patil - Chronic Disease Care">Dr. Vikram Patil - Chronic Disease & Diabetes Care</option>
-                </select>
+                />
               </div>
 
               <div>
-                <label className="text-base font-black text-slate-900 block mb-2">Preferred Date & Time</label>
+                <label className="text-base font-black text-slate-900 block mb-2">Village / Gram Name</label>
                 <input
-                  type="datetime-local"
-                  defaultValue="2026-08-12T14:30"
+                  type="text"
+                  required
+                  value={village}
+                  onChange={(e) => setVillage(e.target.value)}
                   className="w-full text-base font-black p-4 bg-white border-2 border-slate-400 rounded-xl focus:outline-none focus:ring-4 focus:ring-forest-800"
                 />
               </div>
@@ -219,7 +217,7 @@ export default function PatientDashboard() {
                   required
                   value={symptomText}
                   onChange={(e) => setSymptomText(e.target.value)}
-                  placeholder="Describe your health issue (e.g. fever for 2 days, severe headache, stomach ache)..."
+                  placeholder="Describe your health issue (e.g. fever for 2 days, severe headache)..."
                   className="w-full text-base font-bold p-4 bg-white border-2 border-slate-400 rounded-xl focus:outline-none focus:ring-4 focus:ring-forest-800"
                 />
               </div>
@@ -229,7 +227,7 @@ export default function PatientDashboard() {
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary" size="lg">
-                  Confirm Tele-Appointment
+                  Generate Token Ticket →
                 </Button>
               </div>
             </>
@@ -241,28 +239,16 @@ export default function PatientDashboard() {
       <Modal
         isOpen={activeModal === 'FAMILY'}
         onClose={() => setActiveModal(null)}
-        title="Family Health Records & ABHA Sync"
+        title="Family Token Records & Sync"
       >
         <div className="space-y-4">
           <div className="bg-sand-100 p-4 rounded-2xl border-2 border-sand-300 text-base font-bold text-slate-900">
-            Linked Family Group: <span className="font-black text-forest-900">Patil Family (Khed Shivapur Gram)</span>
+            Digital Token Health Records
           </div>
 
-          <div className="divide-y-2 divide-slate-200 border-2 border-slate-300 rounded-2xl overflow-hidden text-base">
-            {[
-              { name: 'Ramesh Patil (Self)', age: 52, abha: '91-8823-4412', history: 'Hypertension' },
-              { name: 'Sunita Patil (Spouse)', age: 48, abha: '91-8823-4413', history: 'Thyroid Care' },
-              { name: 'Aarav Patil (Son)', age: 14, abha: '91-8823-4414', history: 'Routine Immunizations' },
-            ].map((member, i) => (
-              <div key={i} className="p-4 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div>
-                  <p className="font-black text-slate-950 text-lg">{member.name}</p>
-                  <p className="text-slate-700 text-sm font-bold">ABHA: {member.abha} • {member.history}</p>
-                </div>
-                <Button variant="outline" size="sm" className="text-sm font-black">View History</Button>
-              </div>
-            ))}
-          </div>
+          <p className="text-sm font-extrabold text-slate-700">
+            Use the Patient Unique Token Authentication box on the main dashboard to check any family member's active ticket using their <code className="font-mono font-black text-forest-800">SEVA-TK-XXXXXX</code> code.
+          </p>
 
           <div className="flex justify-end pt-2">
             <Button variant="outline" size="md" onClick={() => setActiveModal(null)}>
@@ -283,14 +269,8 @@ export default function PatientDashboard() {
             <AlertTriangle className="w-14 h-14 text-red-600 mx-auto animate-bounce" />
             <h4 className="text-2xl font-black text-red-950">Immediate Emergency Dispatch</h4>
             <p className="text-base text-red-900 font-bold">
-              Alert dispatched to Khed Shivapur PHC Ambulance & local ASHA Health Worker queue.
+              Alert dispatched to PHC Ambulance & ASHA queue.
             </p>
-          </div>
-
-          <div className="bg-sand-100 p-4 rounded-2xl border-2 border-sand-300 text-base font-bold space-y-2 text-slate-950">
-            <p className="font-black text-lg">Ambulance Hotline: 108</p>
-            <p className="font-black text-lg">PHC Medical Officer: +91 94220 11223</p>
-            <p className="text-slate-800">GPS Location sent: Khed Shivapur Gram, Sector 4</p>
           </div>
 
           <div className="flex justify-end space-x-3 pt-2">

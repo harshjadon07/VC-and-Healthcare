@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Mic, MicOff, Volume2, VolumeX, Send, RefreshCw, AlertTriangle, PhoneCall, Sparkles } from 'lucide-react';
+import { Bot, Mic, MicOff, Volume2, VolumeX, Send, RefreshCw, AlertTriangle, PhoneCall, Sparkles, Image as ImageIcon, X, FileText, Paperclip, Cpu } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ interface TriageResult {
   recommendedActions?: string[];
   firstAidInstructions?: string[];
   emergencyAlertTriggered?: boolean;
+  attachedFile?: string;
 }
 
 export default function LandingPage() {
@@ -26,6 +27,16 @@ export default function LandingPage() {
   const [isListening, setIsListening] = useState(false);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
   const [result, setResult] = useState<TriageResult | null>(null);
+
+  // Local Image / Document attachment state
+  const [attachedFile, setAttachedFile] = useState<{
+    file: File;
+    name: string;
+    previewUrl?: string;
+    base64Data?: string;
+    mimeType?: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const sttEngineRef = useRef<SpeechToTextEngine | null>(null);
   const dict = dictionaries[currentLang] || dictionaries.en;
@@ -40,13 +51,41 @@ export default function LandingPage() {
     };
   }, []);
 
-  // When user switches language, re-evaluate AI result in the new language if query exists
   const handleLanguageChange = (newLang: Language) => {
     setCurrentLang(newLang);
     stopSpeaking();
 
-    if (query.trim()) {
-      fetchTriageResult(query, newLang);
+    if (query.trim() || attachedFile) {
+      fetchTriageResult(query, newLang, attachedFile);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Data = event.target?.result as string;
+        let previewUrl: string | undefined = undefined;
+        if (file.type.startsWith('image/')) {
+          previewUrl = base64Data;
+        }
+        setAttachedFile({
+          file,
+          name: file.name,
+          previewUrl,
+          base64Data,
+          mimeType: file.type || 'image/jpeg',
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setAttachedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -77,7 +116,11 @@ export default function LandingPage() {
     }
   };
 
-  const fetchTriageResult = async (symptomText: string, targetLang: Language) => {
+  const fetchTriageResult = async (
+    symptomText: string,
+    targetLang: Language,
+    fileObj?: { name: string; base64Data?: string; mimeType?: string } | null
+  ) => {
     setIsProcessing(true);
     stopSpeaking();
 
@@ -85,13 +128,18 @@ export default function LandingPage() {
       const res = await fetch('/api/ai/triage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symptoms: symptomText, language: targetLang }),
+        body: JSON.stringify({
+          symptoms: symptomText || "Attached medical document / image for clinical evaluation",
+          language: targetLang,
+          attachmentName: fileObj?.name,
+          attachmentData: fileObj?.base64Data,
+          mimeType: fileObj?.mimeType,
+        }),
       });
 
       const data: TriageResult = await res.json();
       setResult(data);
 
-      // Text-to-Speech (TTS) Voice Readout in selected language
       if (isVoiceEnabled && data.patientAdvice) {
         const spokenText = `${data.summary}. ${data.patientAdvice}`;
         speakText(spokenText, targetLang);
@@ -105,14 +153,14 @@ export default function LandingPage() {
 
   const handleSearchSubmit = (symptomText?: string) => {
     const textToSearch = symptomText || query;
-    if (!textToSearch.trim()) return;
+    if (!textToSearch.trim() && !attachedFile) return;
 
     if (isListening && sttEngineRef.current) {
       sttEngineRef.current.stopListening();
       setIsListening(false);
     }
 
-    fetchTriageResult(textToSearch, currentLang);
+    fetchTriageResult(textToSearch, currentLang, attachedFile);
   };
 
   return (
@@ -120,13 +168,13 @@ export default function LandingPage() {
       <Navbar currentLang={currentLang} onLanguageChange={handleLanguageChange} />
 
       {/* Main Ultra-Clean AI Search Center */}
-      <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 w-full flex flex-col items-center justify-center space-y-8">
+      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14 w-full flex flex-col items-center justify-center space-y-8">
         
         {/* Welcome Tag */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center space-x-2 bg-emerald-100 border-2 border-emerald-400 text-forest-950 px-5 py-2 rounded-full text-base font-black shadow-xs">
-            <Sparkles className="w-5 h-5 text-forest-800" />
-            <span>{dict.appName} • {dict.appTagline}</span>
+            <Cpu className="w-5 h-5 text-forest-800 animate-pulse" />
+            <span>Google Gemini AI Powered • ग्रामीण आरोग्य</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black text-slate-950 tracking-tight leading-tight">
@@ -138,17 +186,73 @@ export default function LandingPage() {
           </p>
         </div>
 
-        {/* CENTRAL AI SEARCH BAR WITH STT & TTS CONTROLS */}
-        <div className="w-full bg-white p-4 sm:p-5 rounded-3xl border-4 border-sand-300 shadow-xl space-y-4">
+        {/* CENTRAL SPACIOUS AI SEARCH BAR */}
+        <div className="w-full bg-white p-3 sm:p-4 rounded-3xl border-4 border-sand-300 shadow-xl space-y-3">
+          
+          {/* Hidden File Picker Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept="image/*,.pdf,.doc,.docx"
+            className="hidden"
+          />
+
+          {/* Attached File Preview Badge if selected */}
+          {attachedFile && (
+            <div className="flex items-center justify-between bg-forest-50 border-2 border-forest-400 p-2.5 rounded-2xl">
+              <div className="flex items-center space-x-3 truncate">
+                {attachedFile.previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={attachedFile.previewUrl}
+                    alt="Medical attachment preview"
+                    className="w-10 h-10 rounded-xl object-cover border-2 border-forest-700 shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-forest-800 text-white flex items-center justify-center shrink-0 font-bold">
+                    <FileText className="w-6 h-6 text-emerald-300" />
+                  </div>
+                )}
+                <div className="truncate">
+                  <span className="text-[11px] font-black text-forest-900 uppercase block">Medical File Attached:</span>
+                  <span className="text-sm font-black text-slate-950 truncate block">{attachedFile.name}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveFile}
+                className="p-1.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors shrink-0"
+                title="Remove attachment"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSearchSubmit();
             }}
-            className="flex flex-col sm:flex-row items-center gap-3"
+            className="flex items-center space-x-2 sm:space-x-3"
           >
-            {/* Input Text Box */}
-            <div className="relative flex-1 w-full">
+            {/* LEFT SIDE: COMPACT IMAGE / DOCUMENT ATTACHMENT ICON BUTTON */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`p-3.5 sm:p-4 rounded-2xl border-3 transition-all shrink-0 flex items-center justify-center shadow-sm ${
+                attachedFile
+                  ? 'bg-forest-800 border-forest-950 text-white shadow-md'
+                  : 'bg-emerald-100 border-emerald-400 text-forest-950 hover:bg-emerald-200'
+              }`}
+              title="Attach Local Image or Document"
+            >
+              <ImageIcon className="w-6 h-6 text-forest-800" />
+            </button>
+
+            {/* EXPANDED SPACIOUS INPUT TEXT BOX */}
+            <div className="relative flex-1">
               <input
                 type="text"
                 value={query}
@@ -160,13 +264,13 @@ export default function LandingPage() {
               />
             </div>
 
-            {/* STT Microphone & TTS Voice Buttons */}
-            <div className="flex items-center space-x-2 shrink-0 w-full sm:w-auto justify-end">
+            {/* RIGHT SIDE: COMPACT STT, TTS & SUBMIT BUTTONS */}
+            <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
               {/* 🎤 Speech-to-Text Button */}
               <button
                 type="button"
                 onClick={handleToggleListening}
-                className={`flex items-center space-x-2 px-5 py-4 rounded-2xl text-base font-black transition-all border-3 shadow-md ${
+                className={`p-3.5 sm:px-4 sm:py-4 rounded-2xl text-base font-black transition-all border-3 shadow-md flex items-center space-x-1.5 ${
                   isListening
                     ? 'bg-red-600 border-red-800 text-white animate-pulse'
                     : 'bg-emerald-100 border-emerald-400 text-forest-950 hover:bg-emerald-200'
@@ -174,7 +278,7 @@ export default function LandingPage() {
                 title="Tap to Speak (Speech-to-Text)"
               >
                 {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6 text-forest-800" />}
-                <span className="hidden sm:inline">{isListening ? dict.stopButton : dict.speakButton}</span>
+                <span className="hidden md:inline">{isListening ? dict.stopButton : dict.speakButton}</span>
               </button>
 
               {/* 🔊 Text-to-Speech Toggle Button */}
@@ -188,7 +292,7 @@ export default function LandingPage() {
                     setIsVoiceEnabled(true);
                   }
                 }}
-                className={`p-4 rounded-2xl border-3 transition-all ${
+                className={`p-3.5 sm:p-4 rounded-2xl border-3 transition-all ${
                   isVoiceEnabled
                     ? 'bg-forest-800 border-forest-950 text-white shadow-md'
                     : 'bg-slate-200 border-slate-400 text-slate-600'
@@ -199,9 +303,9 @@ export default function LandingPage() {
               </button>
 
               {/* Submit Button */}
-              <Button type="submit" variant="primary" size="lg" className="px-6 py-4 bg-forest-800 text-lg font-black rounded-2xl">
-                <Send className="w-6 h-6 mr-2 text-emerald-300" />
-                <span>{dict.submitButton}</span>
+              <Button type="submit" variant="primary" size="lg" className="px-5 py-4 bg-forest-800 text-lg font-black rounded-2xl shrink-0">
+                <Send className="w-6 h-6 text-emerald-300" />
+                <span className="hidden sm:inline sm:ml-2">{dict.submitButton}</span>
               </Button>
             </div>
           </form>
@@ -211,13 +315,13 @@ export default function LandingPage() {
             <span className="text-xs font-black uppercase text-slate-500 tracking-wider block mb-2">
               {dict.tapQuickSymptom}
             </span>
-            <div className="flex flex-wrap gap-2.5">
+            <div className="flex flex-wrap gap-2">
               {[
-                { label: dict.chipFever, text: "High fever (103°F) with body chills / तेज़ बुखार" },
-                { label: dict.chipChestPain, text: "Severe chest pain & shortness of breath / छाती में दर्द" },
-                { label: dict.chipHeadache, text: "Severe headache and dizziness / सिरदर्द" },
-                { label: dict.chipStomach, text: "Abdominal pain & continuous vomiting / पेट दर्द" },
-                { label: dict.chipInjury, text: "Deep cut wound / चोट" },
+                { label: dict.chipFever, text: "High fever (103°F) with body chills" },
+                { label: dict.chipChestPain, text: "Severe chest pain & shortness of breath" },
+                { label: dict.chipHeadache, text: "Severe headache and dizziness" },
+                { label: dict.chipStomach, text: "Abdominal pain & continuous vomiting" },
+                { label: dict.chipInjury, text: "Deep cut wound" },
               ].map((chip, idx) => (
                 <button
                   key={idx}
@@ -225,7 +329,7 @@ export default function LandingPage() {
                     setQuery(chip.text);
                     handleSearchSubmit(chip.text);
                   }}
-                  className="px-4 py-2 bg-sand-100 hover:bg-forest-800 hover:text-white text-slate-900 text-sm font-black rounded-xl border-2 border-sand-300 hover:border-forest-950 transition-all shadow-2xs active:scale-95"
+                  className="px-3.5 py-1.5 bg-sand-100 hover:bg-forest-800 hover:text-white text-slate-900 text-sm font-black rounded-xl border-2 border-sand-300 hover:border-forest-950 transition-all shadow-2xs active:scale-95"
                 >
                   {chip.label}
                 </button>
@@ -238,7 +342,7 @@ export default function LandingPage() {
         {isProcessing && (
           <div className="w-full bg-emerald-100 p-6 rounded-3xl border-4 border-emerald-400 text-forest-950 font-black text-xl flex items-center justify-center space-x-3 animate-pulse shadow-md">
             <RefreshCw className="w-8 h-8 animate-spin text-forest-800" />
-            <span>{dict.analyzingText}</span>
+            <span>Analyzing symptoms with Gemini AI Model...</span>
           </div>
         )}
 
@@ -261,7 +365,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-2xl font-black text-slate-950">{dict.aiAdviceTitle}</h3>
-                  <p className="text-sm font-extrabold text-slate-700">{dict.evaluatedViaSafetyEngine}</p>
+                  <p className="text-sm font-extrabold text-slate-700">Evaluated via Gemini Clinical Safety Model</p>
                 </div>
               </div>
 
@@ -280,6 +384,14 @@ export default function LandingPage() {
                 </button>
               </div>
             </div>
+
+            {/* Attached File Note if present */}
+            {result.attachedFile && (
+              <div className="p-3.5 bg-forest-100 border-2 border-forest-400 rounded-2xl text-forest-950 font-black text-sm flex items-center space-x-3">
+                <Paperclip className="w-5 h-5 text-forest-800 shrink-0" />
+                <span>Medical File Analyzed by Gemini AI: {result.attachedFile}</span>
+              </div>
+            )}
 
             {/* Summary */}
             <div className="p-4 bg-white rounded-2xl border-2 border-slate-300 text-lg font-extrabold text-slate-900 leading-relaxed shadow-xs">

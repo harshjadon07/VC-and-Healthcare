@@ -1,19 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Stethoscope, Activity, RefreshCw } from 'lucide-react';
+import { Stethoscope, Activity, RefreshCw, Ticket } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { AppointmentList } from '@/components/doctor/AppointmentList';
 import { PatientDetailPanel } from '@/components/doctor/PatientDetailPanel';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { MOCK_PATIENTS, MockPatient } from '@/lib/mock-data';
+import { MockPatient } from '@/lib/mock-data';
 import { Language, dictionaries } from '@/lib/i18n/dictionary';
 
 export default function DoctorDashboard() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
-  const [patients, setPatients] = useState<MockPatient[]>(MOCK_PATIENTS);
-  const [selectedPatient, setSelectedPatient] = useState<MockPatient>(MOCK_PATIENTS[0]);
+  const [patients, setPatients] = useState<MockPatient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<MockPatient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const dict = dictionaries[currentLang] || dictionaries.en;
@@ -23,9 +23,13 @@ export default function DoctorDashboard() {
     try {
       const res = await fetch('/api/appointments');
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setPatients(data);
-        if (!selectedPatient) setSelectedPatient(data[0]);
+        if (data.length > 0) {
+          setSelectedPatient(data[0]);
+        } else {
+          setSelectedPatient(null);
+        }
       }
     } catch (err) {
       console.error("Failed to load live doctor queue:", err);
@@ -72,32 +76,48 @@ export default function DoctorDashboard() {
                 className="flex items-center space-x-2 px-4 py-3 bg-sand-100 border-2 border-sand-300 hover:bg-sand-200 rounded-2xl text-base font-black text-slate-900 transition-all active:scale-95"
               >
                 <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-                <span>Refresh Queue</span>
+                <span>Refresh Token Queue</span>
               </button>
 
               <div className="flex items-center space-x-2 text-base font-black bg-emerald-100 px-4 py-3 rounded-2xl border-2 border-emerald-400 text-forest-950">
                 <Activity className="w-5 h-5 text-forest-900" />
-                <span>{patients.length} Active Queue</span>
+                <span>{patients.length} Active Tickets</span>
               </div>
             </div>
           </div>
 
           {/* SPLIT DASHBOARD LAYOUT */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* LEFT COLUMN: TODAY'S APPOINTMENT LIST */}
-            <div className="lg:col-span-4 h-full">
-              <AppointmentList
-                patients={patients}
-                selectedPatientId={selectedPatient.id}
-                onSelectPatient={(p) => setSelectedPatient(p)}
-              />
+          {patients.length === 0 ? (
+            <div className="bg-white rounded-3xl border-4 border-sand-300 p-12 text-center shadow-md space-y-4">
+              <Ticket className="w-16 h-16 text-slate-400 mx-auto" />
+              <h3 className="text-2xl font-black text-slate-950">No Active Token Tickets in Queue</h3>
+              <p className="text-base font-extrabold text-slate-700 max-w-md mx-auto">
+                Preloaded mock patients have been cleared. When patients or ASHA workers issue unique token tickets, they will appear here in real-time.
+              </p>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* LEFT COLUMN: TODAY'S APPOINTMENT LIST */}
+              <div className="lg:col-span-4 h-full">
+                <AppointmentList
+                  patients={patients}
+                  selectedPatientId={selectedPatient?.id || ''}
+                  onSelectPatient={(p) => setSelectedPatient(p)}
+                />
+              </div>
 
-            {/* RIGHT COLUMN: PATIENT DETAIL PANEL */}
-            <div className="lg:col-span-8 h-full">
-              <PatientDetailPanel patient={selectedPatient} onRefresh={fetchAppointments} />
+              {/* RIGHT COLUMN: PATIENT DETAIL PANEL */}
+              <div className="lg:col-span-8 h-full">
+                {selectedPatient ? (
+                  <PatientDetailPanel patient={selectedPatient} onRefresh={fetchAppointments} />
+                ) : (
+                  <div className="bg-white p-8 rounded-3xl border-4 border-sand-300 text-center font-black text-slate-600">
+                    Select a patient token ticket from the queue list to inspect.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </main>
       </ProtectedRoute>
 
