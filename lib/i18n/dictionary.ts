@@ -44,13 +44,38 @@ export interface Translations {
   aiSummaryTitle: string;
   startConsultation: string;
   prescription: string;
+
+  // Search Engine & Speech UI Localization
+  searchTitle: string;
+  searchSubtitle: string;
+  searchPlaceholder: string;
+  listeningPlaceholder: string;
+  speakButton: string;
+  stopButton: string;
+  submitButton: string;
+  tapQuickSymptom: string;
+  analyzingText: string;
+  aiAdviceTitle: string;
+  evaluatedViaSafetyEngine: string;
+  clinicalAssessmentLabel: string;
+  adviceInYourLangLabel: string;
+  firstAidTitle: string;
+  callAmbulanceNow: string;
+  rePlayVoice: string;
+
+  // Symptom Chips
+  chipFever: string;
+  chipChestPain: string;
+  chipHeadache: string;
+  chipStomach: string;
+  chipInjury: string;
 }
 
 export const dictionaries: Record<Language, Translations> = {
   en: {
     appName: "SevaHealth",
     appTagline: "Rural Health AI Telemedicine Platform",
-    languageLabel: "Language / भाषा / भाषा / भाषा",
+    languageLabel: "Language",
     talkToAi: "Talk to AI Health Assistant",
     loginRegister: "Login / Register",
     navHome: "Home",
@@ -62,18 +87,18 @@ export const dictionaries: Record<Language, Translations> = {
     patientDashboard: "Patient Healthcare Dashboard",
     healthWorkerDashboard: "ASHA Health Worker Command Center",
     doctorDashboard: "Rural Tele-Consultation Hub",
-    emergencyBanner: "Medical Emergency Hotline available 24/7. In immediate danger, call 108 or tap emergency button.",
-    emergencyCall: "Call Ambulance (108)",
+    emergencyBanner: "Medical Emergency Hotline available 24/7. In immediate danger, call 108.",
+    emergencyCall: "108 Emergency",
     riskMapTitle: "Regional Disease Risk Map & Alerts",
-    riskMapSubtitle: "Live surveillance of endemic outbreaks, seasonal fever spikes, and preventive guidelines in your district.",
+    riskMapSubtitle: "Live surveillance of endemic outbreaks and seasonal fever spikes in your district.",
     aiAssistantCard: "AI Health Assistant",
-    aiAssistantDesc: "Describe symptoms in plain text or regional voice to receive instant triage guidance & clinical summary.",
+    aiAssistantDesc: "Describe symptoms in plain text or regional voice to receive instant triage guidance.",
     bookAppointmentCard: "Book Appointment",
-    bookAppointmentDesc: "Schedule a tele-consultation with verified rural specialist doctors or local PHC health worker.",
+    bookAppointmentDesc: "Schedule a tele-consultation with verified rural specialist doctors.",
     familyRecordsCard: "Family Records",
     familyRecordsDesc: "Digital ABHA health identity, immunization logs, lab reports, and historic prescriptions.",
     emergencyCard: "Emergency SOS",
-    emergencyDesc: "Direct alert dispatch to nearest ASHA worker, PHC medical officer, and local emergency response.",
+    emergencyDesc: "Direct alert dispatch to nearest ASHA worker and PHC emergency hotline.",
     statsTodayPatients: "Today's Patients",
     statsWaiting: "Waiting for Triage",
     statsEmergencyAlerts: "Emergency Alerts",
@@ -89,13 +114,37 @@ export const dictionaries: Record<Language, Translations> = {
     patientDetails: "Patient Clinical Detail Panel",
     vitals: "Vitals & Biometrics",
     aiSummaryTitle: "AI Clinical Triage Summary",
-    startConsultation: "Start Video/Tele Consultation",
-    prescription: "Issue E-Prescription"
+    startConsultation: "Start Consultation",
+    prescription: "Issue E-Prescription",
+
+    searchTitle: "How can I help your health today?",
+    searchSubtitle: "Type or tap the microphone to speak your symptoms in English, Hindi, Marathi, or Tamil.",
+    searchPlaceholder: "Describe symptoms (e.g. fever for 2 days, chest pain, stomach ache)...",
+    listeningPlaceholder: "Listening... Speak your symptoms clearly now...",
+    speakButton: "🎤 Speak",
+    stopButton: "Stop",
+    submitButton: "Submit",
+    tapQuickSymptom: "Or Tap Quick Symptom (1-Click AI Check):",
+    analyzingText: "Analyzing symptoms with AI Clinical Safety Engine...",
+    aiAdviceTitle: "AI Clinical Triage Advice",
+    evaluatedViaSafetyEngine: "Evaluated via Safety Rules Engine",
+    clinicalAssessmentLabel: "💡 Clinical Assessment:",
+    adviceInYourLangLabel: "🗣️ Advice in Your Language:",
+    firstAidTitle: "First-Aid Protocols:",
+    callAmbulanceNow: "🚨 CALL 108 AMBULANCE IMMEDIATELY",
+    rePlayVoice: "Re-play Voice Out Loud",
+
+    chipFever: "🤒 High Fever (103°F)",
+    chipChestPain: "🫁 Severe Chest Pain",
+    chipHeadache: "🤕 Severe Headache",
+    chipStomach: "🤢 Stomach Vomiting",
+    chipInjury: "🩸 Deep Cut Injury"
   },
+
   hi: {
     appName: "सेवा हेल्थ (SevaHealth)",
     appTagline: "ग्रामीण स्वास्थ्य एआई टेलीमेडिसिन मंच",
-    languageLabel: "भाषा चुनें",
+    languageLabel: "भाषा",
     talkToAi: "एआई स्वास्थ्य सहायक से बात करें",
     loginRegister: "लॉगिन / पंजीकरण",
     navHome: "मुख्य पृष्ठ",
@@ -108,7 +157,7 @@ export const dictionaries: Record<Language, Translations> = {
     healthWorkerDashboard: "आशा स्वास्थ्य कार्यकर्ता कमांड सेंटर",
     doctorDashboard: "ग्रामीण टेली-परामर्श केंद्र",
     emergencyBanner: "आपातकालीन नंबर 108 पर संपर्क करें। आपात स्थिति में तुरंत सहायता प्राप्त करें।",
-    emergencyCall: "एम्बुलेंस 108 डायल करें",
+    emergencyCall: "108 आपातकालीन",
     riskMapTitle: "क्षेत्रीय बीमारी जोखिम मानचित्र एवं चेतावनी",
     riskMapSubtitle: "आपके जिले में मौसमी बुखार, डेंगू, और संक्रामक बीमारियों की लाइव निगरानी।",
     aiAssistantCard: "एआई स्वास्थ्य सहायक",
@@ -135,12 +184,36 @@ export const dictionaries: Record<Language, Translations> = {
     vitals: "शारीरिक मापदंड (Vitals)",
     aiSummaryTitle: "एआई क्लिनिकल ट्राइएज सारांश",
     startConsultation: "टेली-परामर्श शुरू करें",
-    prescription: "ई-दवा पर्ची जारी करें"
+    prescription: "ई-दवा पर्ची जारी करें",
+
+    searchTitle: "आज आपकी सेहत में कैसे मदद करूँ?",
+    searchSubtitle: "अपनी भाषा (हिंदी, अंग्रेजी, मराठी, तमिल) में लक्षण बोलें या टाइप करें।",
+    searchPlaceholder: "अपने लक्षण बताएं (जैसे 2 दिन से तेज़ बुखार, छाती में दर्द, पेट दर्द)...",
+    listeningPlaceholder: "सुन रहा हूँ... कृपया अपने लक्षण स्पष्ट बोलें...",
+    speakButton: "🎤 बोलें",
+    stopButton: "रोकें",
+    submitButton: "जांचें",
+    tapQuickSymptom: "या मुख्य लक्षण पर क्लिक करें (1-क्लिक एआई जांच):",
+    analyzingText: "एआई क्लिनिकल सेफ्टी इंजन द्वारा लक्षणों की जांच हो रही है...",
+    aiAdviceTitle: "एआई क्लिनिकल ट्राइएज सलाह",
+    evaluatedViaSafetyEngine: "सुरक्षा नियमों के आधार पर विश्लेषित",
+    clinicalAssessmentLabel: "💡 क्लिनिकल आकलन:",
+    adviceInYourLangLabel: "🗣️ आपकी भाषा में सलाह:",
+    firstAidTitle: "प्राथमिक उपचार (First-Aid):",
+    callAmbulanceNow: "🚨 तुरंत 108 एम्बुलेंस बुलाएं",
+    rePlayVoice: "आवाज दोबारा सुनें",
+
+    chipFever: "🤒 तेज़ बुखार (103°F)",
+    chipChestPain: "🫁 छाती में तेज़ दर्द",
+    chipHeadache: "🤕 तेज़ सिरदर्द",
+    chipStomach: "🤢 पेट दर्द व उल्टी",
+    chipInjury: "🩸 गहरा घाव / चोट"
   },
+
   mr: {
     appName: "सेवा हेल्थ (SevaHealth)",
     appTagline: "ग्रामीण आरोग्य एआय टेलिमेडिसिन प्लॅटफॉर्म",
-    languageLabel: "भाषा निवडा",
+    languageLabel: "भाषा",
     talkToAi: "एआय आरोग्य सहाय्यकाशी बोला",
     loginRegister: "लॉगिन / नोंदणी",
     navHome: "मुख्य पृष्ठ",
@@ -153,7 +226,7 @@ export const dictionaries: Record<Language, Translations> = {
     healthWorkerDashboard: "आशा आरोग्य केंद्र",
     doctorDashboard: "ग्रामीण टेलि-सल्ला केंद्र",
     emergencyBanner: "वैद्यकीय आणीबाणीसाठी 108 वर कॉल करा.",
-    emergencyCall: "ॲम्ब्युलन्स 108 कॉल करा",
+    emergencyCall: "108 आणीबाणी",
     riskMapTitle: "प्रादेशिक आजार धोका नकाशा",
     riskMapSubtitle: "तुमच्या तालुक्यातील साथीच्या आजारांची थेट माहिती व प्रतिबंधात्मक उपाय.",
     aiAssistantCard: "एआय आरोग्य सहाय्यक",
@@ -180,12 +253,36 @@ export const dictionaries: Record<Language, Translations> = {
     vitals: "शरीर स्थिती (Vitals)",
     aiSummaryTitle: "एआय क्लिनिकल सारांश",
     startConsultation: "सल्लामसलत सुरू करा",
-    prescription: "ई-औषध चिठ्ठी द्या"
+    prescription: "ई-औषध चिठ्ठी द्या",
+
+    searchTitle: "आज तुमच्या आरोग्यासाठी मी कशी मदत करू?",
+    searchSubtitle: "आपल्या भाषेत (मराठी, हिंदी, इंग्रजी, तमिळ) लक्षणे बोला किंवा टाईप करा.",
+    searchPlaceholder: "लक्षणे सांगा (उदा. २ दिवसांपासून ताप, छातीत दुखणे, पोटदुखी)...",
+    listeningPlaceholder: "ऐकत आहे... कृपया तुमची लक्षणे स्पष्ट बोला...",
+    speakButton: "🎤 बोला",
+    stopButton: "थांबवा",
+    submitButton: "तपासा",
+    tapQuickSymptom: "किंवा मुख्य लक्षणावर क्लिक करा (१-क्लिक एआय तपासणी):",
+    analyzingText: "एआय सेफ्टी इंजिनद्वारे लक्षणे तपासली जात आहेत...",
+    aiAdviceTitle: "एआय क्लिनिकल तपासणी सल्ला",
+    evaluatedViaSafetyEngine: "सुरक्षा नियमांनुसार विश्लेषण",
+    clinicalAssessmentLabel: "💡 वैद्यकीय निष्कर्ष:",
+    adviceInYourLangLabel: "🗣️ तुमच्या मराठी भाषेत सल्ला:",
+    firstAidTitle: "प्रथमोपचार (First-Aid):",
+    callAmbulanceNow: "🚨 ताबडतोब १०८ रुग्णवाहिका बोलवा",
+    rePlayVoice: "आवाज पुन्हा ऐका",
+
+    chipFever: "🤒 तीव्र ताप (103°F)",
+    chipChestPain: "🫁 छातीत तीव्र वेदना",
+    chipHeadache: "🤕 तीव्र डोकेदुखी",
+    chipStomach: "🤢 पोटदुखी व उलटी",
+    chipInjury: "🩸 गंभीर दुखापत / रक्तस्राव"
   },
+
   ta: {
     appName: "சேவா ஹெல்த் (SevaHealth)",
     appTagline: "கிராமப்புற சுகாதார AI தளம்",
-    languageLabel: "மொழியைத் தேர்ந்தெடுக்கவும்",
+    languageLabel: "மொழி",
     talkToAi: "AI சுகாதார உதவியாளரிடம் பேசுங்கள்",
     loginRegister: "உள்நுழைவு / பதிவு",
     navHome: "முகப்பு",
@@ -198,7 +295,7 @@ export const dictionaries: Record<Language, Translations> = {
     healthWorkerDashboard: "ஆஷா சுகாதார மையக் கட்டுப்பாட்டு அறை",
     doctorDashboard: "கிராமப்புற தொலை மருத்துவ மையம்",
     emergencyBanner: "அவசர உதவிக்கு 108 ஐ அழைக்கவும்.",
-    emergencyCall: "ஆம்புலன்ஸ் 108 அழைக்கவும்",
+    emergencyCall: "108 அவசரம்",
     riskMapTitle: "பிராந்திய நோய் அபாய வரைபடம்",
     riskMapSubtitle: "உங்கள் மாவட்டத்தில் உள்ள நோய்கள் பற்றிய நேரடி எச்சரிக்கைகள்.",
     aiAssistantCard: "AI சுகாதார உதவியாளர்",
@@ -225,6 +322,29 @@ export const dictionaries: Record<Language, Translations> = {
     vitals: "உடல் அளவீடுகள் (Vitals)",
     aiSummaryTitle: "AI மருத்துவ சுருக்கம்",
     startConsultation: "ஆலோசனையைத் தொடங்குங்கள்",
-    prescription: "மின்-மருந்துச் சீட்டு"
+    prescription: "மின்-மருந்துச் சீட்டு",
+
+    searchTitle: "இன்று உங்கள் ஆரோக்கியத்திற்கு நான் எவ்வாறு உதவ முடியும்?",
+    searchSubtitle: "உங்கள் மொழியில் (தமிழ், இந்தி, மராத்தி, ஆங்கிலம்) அறிகுறிகளைக் கூறவும்.",
+    searchPlaceholder: "அறிகுறிகளைக் கூறவும் (எ.கா. 2 நாட்கள் காய்ச்சல், நெஞ்சு வலி)...",
+    listeningPlaceholder: "கேட்கிறது... உங்கள் அறிகுறிகளை தெளிவாகக் கூறவும்...",
+    speakButton: "🎤 பேசுங்கள்",
+    stopButton: "நிறுத்து",
+    submitButton: "அனுப்பு",
+    tapQuickSymptom: "அல்லது முக்கிய அறிகுறியைத் தட்டவும் (1-கிளிக் பரிசோதனை):",
+    analyzingText: "AI மருத்துவ பாதுகாப்பு எஞ்சின் மூலம் பரிசீலிக்கப்படுகிறது...",
+    aiAdviceTitle: "AI மருத்துவ பரிசோதனை ஆலோசனை",
+    evaluatedViaSafetyEngine: "பாதுகாப்பு விதிகளின் கீழ் பகுப்பாய்வு செய்யப்பட்டது",
+    clinicalAssessmentLabel: "💡 மருத்துவ மதிப்பீடு:",
+    adviceInYourLangLabel: "🗣️ தமிழ் மொழியில் ஆலோசனை:",
+    firstAidTitle: "முதலுதவி முறைகள்:",
+    callAmbulanceNow: "🚨 உடனடியாக 108 ஆம்புலன்ஸை அழைக்கவும்",
+    rePlayVoice: "குரலை மீண்டும் கேட்கவும்",
+
+    chipFever: "🤒 அதிக காய்ச்சல் (103°F)",
+    chipChestPain: "🫁 கடுமையான நெஞ்சு வலி",
+    chipHeadache: "🤕 கடுமையான தலைவலி",
+    chipStomach: "🤢 வயிற்று வலி வாந்தி",
+    chipInjury: "🩸 ஆழமான காயம் / ரத்தப்போக்கு"
   }
 };

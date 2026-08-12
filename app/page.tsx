@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Mic, MicOff, Volume2, VolumeX, Send, RefreshCw, AlertTriangle, PhoneCall, CheckCircle2, Sparkles } from 'lucide-react';
+import { Bot, Mic, MicOff, Volume2, VolumeX, Send, RefreshCw, AlertTriangle, PhoneCall, Sparkles } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,16 @@ export default function LandingPage() {
     };
   }, []);
 
+  // When user switches language, re-evaluate AI result in the new language if query exists
+  const handleLanguageChange = (newLang: Language) => {
+    setCurrentLang(newLang);
+    stopSpeaking();
+
+    if (query.trim()) {
+      fetchTriageResult(query, newLang);
+    }
+  };
+
   const handleToggleListening = () => {
     if (!sttEngineRef.current || !sttEngineRef.current.isSupported()) {
       alert("Speech-to-Text microphone is not supported on this browser. You can type your symptoms.");
@@ -67,7 +77,33 @@ export default function LandingPage() {
     }
   };
 
-  const handleSearchSubmit = async (symptomText?: string) => {
+  const fetchTriageResult = async (symptomText: string, targetLang: Language) => {
+    setIsProcessing(true);
+    stopSpeaking();
+
+    try {
+      const res = await fetch('/api/ai/triage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symptoms: symptomText, language: targetLang }),
+      });
+
+      const data: TriageResult = await res.json();
+      setResult(data);
+
+      // Text-to-Speech (TTS) Voice Readout in selected language
+      if (isVoiceEnabled && data.patientAdvice) {
+        const spokenText = `${data.summary}. ${data.patientAdvice}`;
+        speakText(spokenText, targetLang);
+      }
+    } catch (err) {
+      console.error("Triage API error:", err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSearchSubmit = (symptomText?: string) => {
     const textToSearch = symptomText || query;
     if (!textToSearch.trim()) return;
 
@@ -76,45 +112,12 @@ export default function LandingPage() {
       setIsListening(false);
     }
 
-    setIsProcessing(true);
-    setResult(null);
-    stopSpeaking();
-
-    try {
-      const res = await fetch('/api/ai/triage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symptoms: textToSearch, language: currentLang }),
-      });
-
-      const data: TriageResult = await res.json();
-      setResult(data);
-
-      // Text-to-Speech (TTS) Voice Readout if enabled
-      if (isVoiceEnabled && data.patientAdvice) {
-        const spokenText = `${data.summary}. ${data.patientAdvice}`;
-        speakText(spokenText, currentLang);
-      }
-    } catch (err) {
-      console.error("Triage API error:", err);
-      const fallbackData: TriageResult = {
-        triageLevel: 'ROUTINE',
-        summary: "Symptom recorded by AI safety engine.",
-        patientAdvice: "Please rest and visit your nearest PHC clinic or ASHA health worker.",
-        recommendedActions: ["Visit local PHC clinic", "Drink plenty of clean water"],
-      };
-      setResult(fallbackData);
-      if (isVoiceEnabled) {
-        speakText(fallbackData.patientAdvice, currentLang);
-      }
-    } finally {
-      setIsProcessing(false);
-    }
+    fetchTriageResult(textToSearch, currentLang);
   };
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-sand-50">
-      <Navbar currentLang={currentLang} onLanguageChange={setCurrentLang} />
+      <Navbar currentLang={currentLang} onLanguageChange={handleLanguageChange} />
 
       {/* Main Ultra-Clean AI Search Center */}
       <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 w-full flex flex-col items-center justify-center space-y-8">
@@ -123,15 +126,15 @@ export default function LandingPage() {
         <div className="text-center space-y-3">
           <div className="inline-flex items-center space-x-2 bg-emerald-100 border-2 border-emerald-400 text-forest-950 px-5 py-2 rounded-full text-base font-black shadow-xs">
             <Sparkles className="w-5 h-5 text-forest-800" />
-            <span>Rural Health AI Voice Assistant • ग्रामीण आरोग्य एआई</span>
+            <span>{dict.appName} • {dict.appTagline}</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black text-slate-950 tracking-tight leading-tight">
-            How can I help your health today?
+            {dict.searchTitle}
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-800 font-extrabold max-w-2xl mx-auto">
-            Type or tap the microphone to speak your symptoms in English, Hindi, Marathi, or Tamil.
+            {dict.searchSubtitle}
           </p>
         </div>
 
@@ -150,11 +153,7 @@ export default function LandingPage() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={
-                  isListening
-                    ? "Listening... Speak your symptoms clearly now..."
-                    : "Describe symptoms (e.g. fever for 2 days, chest pain, stomach ache)..."
-                }
+                placeholder={isListening ? dict.listeningPlaceholder : dict.searchPlaceholder}
                 className={`w-full px-5 py-4 text-lg sm:text-xl font-extrabold text-slate-950 bg-sand-50 border-3 rounded-2xl focus:outline-none focus:ring-4 focus:ring-forest-800 ${
                   isListening ? 'border-red-500 bg-red-50' : 'border-slate-300'
                 }`}
@@ -175,7 +174,7 @@ export default function LandingPage() {
                 title="Tap to Speak (Speech-to-Text)"
               >
                 {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6 text-forest-800" />}
-                <span className="hidden sm:inline">{isListening ? "Stop" : "🎤 Speak"}</span>
+                <span className="hidden sm:inline">{isListening ? dict.stopButton : dict.speakButton}</span>
               </button>
 
               {/* 🔊 Text-to-Speech Toggle Button */}
@@ -194,7 +193,7 @@ export default function LandingPage() {
                     ? 'bg-forest-800 border-forest-950 text-white shadow-md'
                     : 'bg-slate-200 border-slate-400 text-slate-600'
                 }`}
-                title={isVoiceEnabled ? "Voice Output Active (Read out loud)" : "Voice Output Muted"}
+                title={isVoiceEnabled ? "Voice Output Active" : "Voice Output Muted"}
               >
                 {isVoiceEnabled ? <Volume2 className="w-6 h-6 text-emerald-300" /> : <VolumeX className="w-6 h-6" />}
               </button>
@@ -202,7 +201,7 @@ export default function LandingPage() {
               {/* Submit Button */}
               <Button type="submit" variant="primary" size="lg" className="px-6 py-4 bg-forest-800 text-lg font-black rounded-2xl">
                 <Send className="w-6 h-6 mr-2 text-emerald-300" />
-                <span>Submit</span>
+                <span>{dict.submitButton}</span>
               </Button>
             </div>
           </form>
@@ -210,15 +209,15 @@ export default function LandingPage() {
           {/* 1-TAP QUICK SYMPTOM CHIPS */}
           <div className="pt-2 border-t-2 border-sand-200">
             <span className="text-xs font-black uppercase text-slate-500 tracking-wider block mb-2">
-              Or Tap Quick Symptom (1-Click AI Check):
+              {dict.tapQuickSymptom}
             </span>
             <div className="flex flex-wrap gap-2.5">
               {[
-                { label: "🤒 High Fever", text: "High fever (103°F) with body chills" },
-                { label: "🫁 Chest Pain / Dyspnea", text: "Severe chest pain & inability to breathe" },
-                { label: "🤕 Severe Headache", text: "Severe headache and dizziness" },
-                { label: "🤢 Stomach Vomiting", text: "Abdominal pain & continuous vomiting" },
-                { label: "🩸 Deep Cut Injury", text: "Bleeding cut wound on arm" },
+                { label: dict.chipFever, text: "High fever (103°F) with body chills / तेज़ बुखार" },
+                { label: dict.chipChestPain, text: "Severe chest pain & shortness of breath / छाती में दर्द" },
+                { label: dict.chipHeadache, text: "Severe headache and dizziness / सिरदर्द" },
+                { label: dict.chipStomach, text: "Abdominal pain & continuous vomiting / पेट दर्द" },
+                { label: dict.chipInjury, text: "Deep cut wound / चोट" },
               ].map((chip, idx) => (
                 <button
                   key={idx}
@@ -239,7 +238,7 @@ export default function LandingPage() {
         {isProcessing && (
           <div className="w-full bg-emerald-100 p-6 rounded-3xl border-4 border-emerald-400 text-forest-950 font-black text-xl flex items-center justify-center space-x-3 animate-pulse shadow-md">
             <RefreshCw className="w-8 h-8 animate-spin text-forest-800" />
-            <span>Analyzing symptoms with AI Clinical Safety Engine...</span>
+            <span>{dict.analyzingText}</span>
           </div>
         )}
 
@@ -261,21 +260,21 @@ export default function LandingPage() {
                   <Bot className="w-7 h-7 text-emerald-300" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-slate-950">AI Clinical Triage Advice</h3>
-                  <p className="text-sm font-extrabold text-slate-700">Evaluated via Safety Rules Engine</p>
+                  <h3 className="text-2xl font-black text-slate-950">{dict.aiAdviceTitle}</h3>
+                  <p className="text-sm font-extrabold text-slate-700">{dict.evaluatedViaSafetyEngine}</p>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2">
                 <Badge variant={result.triageLevel} className="text-sm px-4 py-1.5 font-black">
-                  {result.triageLevel === 'EMERGENCY' ? '🔴 EMERGENCY RED-FLAG' : result.triageLevel === 'URGENT' ? '🟡 URGENT DOCTOR VISIT' : '🟢 ROUTINE HOME CARE'}
+                  {result.triageLevel === 'EMERGENCY' ? '🔴 EMERGENCY' : result.triageLevel === 'URGENT' ? '🟡 URGENT' : '🟢 ROUTINE'}
                 </Badge>
                 
                 {/* Voice Re-play Button */}
                 <button
                   onClick={() => speakText(`${result.summary}. ${result.patientAdvice}`, currentLang)}
-                  className="p-2.5 rounded-xl bg-forest-100 border-2 border-forest-400 text-forest-900 font-bold hover:bg-forest-200"
-                  title="Re-play Voice Out Loud"
+                  className="p-2.5 rounded-xl bg-forest-100 border-2 border-forest-400 text-forest-900 font-bold hover:bg-forest-200 flex items-center space-x-1"
+                  title={dict.rePlayVoice}
                 >
                   <Volume2 className="w-5 h-5" />
                 </button>
@@ -284,24 +283,24 @@ export default function LandingPage() {
 
             {/* Summary */}
             <div className="p-4 bg-white rounded-2xl border-2 border-slate-300 text-lg font-extrabold text-slate-900 leading-relaxed shadow-xs">
-              <span className="font-black text-forest-900 block mb-1 text-xl">💡 Clinical Assessment:</span>
+              <span className="font-black text-forest-900 block mb-1 text-xl">{dict.clinicalAssessmentLabel}</span>
               {result.summary}
             </div>
 
             {/* Patient Guidance */}
             {result.patientAdvice && (
               <div className="p-4 bg-white rounded-2xl border-2 border-slate-300 text-lg font-extrabold text-slate-900 leading-relaxed shadow-xs">
-                <span className="font-black text-forest-900 block mb-1 text-xl">🗣️ Advice in Your Language:</span>
+                <span className="font-black text-forest-900 block mb-1 text-xl">{dict.adviceInYourLangLabel}</span>
                 {result.patientAdvice}
               </div>
             )}
 
-            {/* First-Aid Instructions if Emergency/Urgent */}
+            {/* First-Aid Instructions */}
             {result.firstAidInstructions && result.firstAidInstructions.length > 0 && (
               <div className="bg-amber-100 p-5 rounded-2xl border-2 border-amber-400 text-base text-amber-950 space-y-2">
                 <span className="font-black text-amber-950 flex items-center space-x-2 text-xl">
                   <AlertTriangle className="w-6 h-6 text-amber-700" />
-                  <span>First-Aid Protocols:</span>
+                  <span>{dict.firstAidTitle}</span>
                 </span>
                 <ul className="list-disc pl-6 space-y-1 font-extrabold text-base">
                   {result.firstAidInstructions.map((fa, idx) => (
@@ -317,7 +316,7 @@ export default function LandingPage() {
                 <a href="tel:108" className="w-full block">
                   <Button variant="danger" size="xl" className="w-full text-xl font-black py-5 border-4 border-red-800 shadow-xl">
                     <PhoneCall className="w-7 h-7 mr-3 text-white animate-bounce" />
-                    <span>🚨 CALL 108 AMBULANCE IMMEDIATELY</span>
+                    <span>{dict.callAmbulanceNow}</span>
                   </Button>
                 </a>
               </div>
