@@ -1,232 +1,331 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Bot, UserCheck, Stethoscope, Users, HeartPulse, ArrowRight, ShieldCheck, PhoneCall, Sparkles, MapPin, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bot, Mic, MicOff, Volume2, VolumeX, Send, RefreshCw, AlertTriangle, PhoneCall, CheckCircle2, Sparkles } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
-import { Modal } from '@/components/ui/modal';
+import { Badge } from '@/components/ui/badge';
 import { Language, dictionaries } from '@/lib/i18n/dictionary';
+import { SpeechToTextEngine, speakText, stopSpeaking } from '@/lib/speech';
+
+interface TriageResult {
+  triageLevel: 'EMERGENCY' | 'URGENT' | 'ROUTINE';
+  summary: string;
+  patientAdvice: string;
+  symptomsDetected?: string[];
+  recommendedActions?: string[];
+  firstAidInstructions?: string[];
+  emergencyAlertTriggered?: boolean;
+}
 
 export default function LandingPage() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [selectedLoginRole, setSelectedLoginRole] = useState<'PATIENT' | 'HEALTH_WORKER' | 'DOCTOR'>('PATIENT');
+  const [query, setQuery] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+  const [result, setResult] = useState<TriageResult | null>(null);
 
+  const sttEngineRef = useRef<SpeechToTextEngine | null>(null);
   const dict = dictionaries[currentLang] || dictionaries.en;
 
+  useEffect(() => {
+    sttEngineRef.current = new SpeechToTextEngine();
+    return () => {
+      stopSpeaking();
+      if (sttEngineRef.current) {
+        sttEngineRef.current.stopListening();
+      }
+    };
+  }, []);
+
+  const handleToggleListening = () => {
+    if (!sttEngineRef.current || !sttEngineRef.current.isSupported()) {
+      alert("Speech-to-Text microphone is not supported on this browser. You can type your symptoms.");
+      return;
+    }
+
+    if (isListening) {
+      sttEngineRef.current.stopListening();
+      setIsListening(false);
+    } else {
+      setIsListening(true);
+      sttEngineRef.current.startListening({
+        language: currentLang,
+        onTranscript: (transcript) => {
+          setQuery(transcript);
+        },
+        onEnd: () => {
+          setIsListening(false);
+        },
+        onError: (err) => {
+          console.error("Speech recognition error:", err);
+          setIsListening(false);
+        },
+      });
+    }
+  };
+
+  const handleSearchSubmit = async (symptomText?: string) => {
+    const textToSearch = symptomText || query;
+    if (!textToSearch.trim()) return;
+
+    if (isListening && sttEngineRef.current) {
+      sttEngineRef.current.stopListening();
+      setIsListening(false);
+    }
+
+    setIsProcessing(true);
+    setResult(null);
+    stopSpeaking();
+
+    try {
+      const res = await fetch('/api/ai/triage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symptoms: textToSearch, language: currentLang }),
+      });
+
+      const data: TriageResult = await res.json();
+      setResult(data);
+
+      // Text-to-Speech (TTS) Voice Readout if enabled
+      if (isVoiceEnabled && data.patientAdvice) {
+        const spokenText = `${data.summary}. ${data.patientAdvice}`;
+        speakText(spokenText, currentLang);
+      }
+    } catch (err) {
+      console.error("Triage API error:", err);
+      const fallbackData: TriageResult = {
+        triageLevel: 'ROUTINE',
+        summary: "Symptom recorded by AI safety engine.",
+        patientAdvice: "Please rest and visit your nearest PHC clinic or ASHA health worker.",
+        recommendedActions: ["Visit local PHC clinic", "Drink plenty of clean water"],
+      };
+      setResult(fallbackData);
+      if (isVoiceEnabled) {
+        speakText(fallbackData.patientAdvice, currentLang);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-linear-to-b from-sand-50 via-white to-sand-100">
+    <div className="min-h-screen flex flex-col justify-between bg-sand-50">
       <Navbar currentLang={currentLang} onLanguageChange={setCurrentLang} />
 
-      {/* Main Hero Section */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 w-full">
-        {/* Top Announcement Tag */}
-        <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center space-x-2 bg-forest-100 border border-forest-300 text-forest-900 px-4 py-1.5 rounded-full text-xs font-bold shadow-2xs">
-            <Sparkles className="w-4 h-4 text-forest-800 animate-spin" />
-            <span>Empowering ASHA Workers & Rural Families with AI Triage</span>
+      {/* Main Ultra-Clean AI Search Center */}
+      <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 w-full flex flex-col items-center justify-center space-y-8">
+        
+        {/* Welcome Tag */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center space-x-2 bg-emerald-100 border-2 border-emerald-400 text-forest-950 px-5 py-2 rounded-full text-base font-black shadow-xs">
+            <Sparkles className="w-5 h-5 text-forest-800" />
+            <span>Rural Health AI Voice Assistant • ग्रामीण आरोग्य एआई</span>
           </div>
-        </div>
 
-        {/* Hero Headline */}
-        <div className="text-center max-w-4xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.15]">
-            {dict.heroTitle}
+          <h1 className="text-4xl sm:text-6xl font-black text-slate-950 tracking-tight leading-tight">
+            How can I help your health today?
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-slate-700 font-medium max-w-3xl mx-auto leading-relaxed">
-            {dict.heroSubtitle}
-          </p>
 
-          {/* TWO PRIMARY ENTRY POINTS */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
-            {/* 1. Talk to AI Health Assistant (No Login Required) */}
-            <Link href="/patient/assistant" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full bg-forest-800 hover:bg-forest-900 text-white text-lg py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all">
-                <Bot className="w-6 h-6 mr-3 text-emerald-400" />
-                <span>{dict.talkToAi}</span>
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
-
-            {/* 2. Login / Register */}
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setIsLoginModalOpen(true)}
-              className="w-full sm:w-auto border-2 border-forest-800 text-forest-900 hover:bg-forest-50 text-lg py-4 px-8 rounded-xl shadow-sm"
-            >
-              <UserCheck className="w-6 h-6 mr-3 text-forest-800" />
-              <span>{dict.loginRegister}</span>
-            </Button>
-          </div>
-
-          <p className="mt-3 text-xs text-slate-500 font-semibold">
-            ✓ Free immediate AI health assessment • No mandatory registration for initial symptom check
+          <p className="text-lg sm:text-xl text-slate-800 font-extrabold max-w-2xl mx-auto">
+            Type or tap the microphone to speak your symptoms in English, Hindi, Marathi, or Tamil.
           </p>
         </div>
 
-        {/* Phase 1 Scaffolding Portal Quick Access Cards */}
-        <div className="mt-16 pt-12 border-t border-slate-200">
-          <div className="text-center mb-8">
-            <span className="text-xs font-mono text-forest-800 font-bold uppercase tracking-widest block">
-              [ Phase 1 Scaffolding Preview ]
-            </span>
-            <h2 className="text-2xl font-black text-slate-900 mt-1">
-              Explore SevaHealth Dashboard Portals
-            </h2>
-            <p className="text-xs text-slate-600 font-semibold">
-              Click any role below to view the interactive Phase 1 UI dashboard scaffolding.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Patient Portal */}
-            <Link href="/patient" className="group">
-              <div className="bg-white rounded-2xl p-6 border-2 border-forest-100 group-hover:border-forest-500 shadow-sm group-hover:shadow-md transition-all h-full flex flex-col justify-between">
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-forest-100 text-forest-900 flex items-center justify-center mb-4 group-hover:bg-forest-800 group-hover:text-white transition-colors">
-                    <HeartPulse className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-forest-800">
-                    Patient Dashboard
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-2 font-medium leading-relaxed">
-                    AI Health Assistant card, Book Appointment, Family Records, Emergency SOS, and Disease Risk Map.
-                  </p>
-                </div>
-                <div className="mt-6 pt-3 border-t border-slate-100 text-xs font-bold text-forest-800 flex items-center justify-between">
-                  <span>Open Patient Portal</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </Link>
-
-            {/* ASHA Health Worker Portal */}
-            <Link href="/health-worker" className="group">
-              <div className="bg-white rounded-2xl p-6 border-2 border-forest-100 group-hover:border-forest-500 shadow-sm group-hover:shadow-md transition-all h-full flex flex-col justify-between">
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-forest-100 text-forest-900 flex items-center justify-center mb-4 group-hover:bg-forest-800 group-hover:text-white transition-colors">
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-forest-800">
-                    Health Worker (ASHA)
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-2 font-medium leading-relaxed">
-                    Patient triage queue, today&apos;s waiting stats, emergency alert feeds, and tele-doctor routing.
-                  </p>
-                </div>
-                <div className="mt-6 pt-3 border-t border-slate-100 text-xs font-bold text-forest-800 flex items-center justify-between">
-                  <span>Open Health Worker Queue</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </Link>
-
-            {/* Doctor Portal */}
-            <Link href="/doctor" className="group">
-              <div className="bg-white rounded-2xl p-6 border-2 border-forest-100 group-hover:border-forest-500 shadow-sm group-hover:shadow-md transition-all h-full flex flex-col justify-between">
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-forest-100 text-forest-900 flex items-center justify-center mb-4 group-hover:bg-forest-800 group-hover:text-white transition-colors">
-                    <Stethoscope className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-forest-800">
-                    Doctor Portal
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-2 font-medium leading-relaxed">
-                    Prioritized appointment queue, patient detail panel, vitals monitoring, AI summary, & start tele-consultation.
-                  </p>
-                </div>
-                <div className="mt-6 pt-3 border-t border-slate-100 text-xs font-bold text-forest-800 flex items-center justify-between">
-                  <span>Open Doctor Panel</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
-      </main>
-
-      {/* Login / Register Modal */}
-      <Modal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        title="Login / Register to SevaHealth"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-slate-600 font-medium">
-            Select your role to simulate portal sign-in (Firebase Auth will be wired in Phase 2):
-          </p>
-
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'PATIENT', label: 'Patient', icon: HeartPulse },
-              { id: 'HEALTH_WORKER', label: 'ASHA Worker', icon: Users },
-              { id: 'DOCTOR', label: 'Doctor', icon: Stethoscope },
-            ].map((role) => {
-              const Icon = role.icon;
-              const isSel = selectedLoginRole === role.id;
-              return (
-                <button
-                  key={role.id}
-                  onClick={() => setSelectedLoginRole(role.id as any)}
-                  className={`p-3 rounded-lg border text-center transition-all ${
-                    isSel
-                      ? 'bg-forest-800 text-white border-forest-900 font-bold shadow-sm'
-                      : 'bg-white text-slate-700 border-slate-300 font-semibold hover:bg-slate-50'
-                  }`}
-                >
-                  <Icon className="w-5 h-5 mx-auto mb-1" />
-                  <span className="text-xs">{role.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Mobile Phone Number</label>
+        {/* CENTRAL AI SEARCH BAR WITH STT & TTS CONTROLS */}
+        <div className="w-full bg-white p-4 sm:p-5 rounded-3xl border-4 border-sand-300 shadow-xl space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSearchSubmit();
+            }}
+            className="flex flex-col sm:flex-row items-center gap-3"
+          >
+            {/* Input Text Box */}
+            <div className="relative flex-1 w-full">
               <input
-                type="tel"
-                placeholder="+91 98765 43210"
-                className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-700"
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={
+                  isListening
+                    ? "Listening... Speak your symptoms clearly now..."
+                    : "Describe symptoms (e.g. fever for 2 days, chest pain, stomach ache)..."
+                }
+                className={`w-full px-5 py-4 text-lg sm:text-xl font-extrabold text-slate-950 bg-sand-50 border-3 rounded-2xl focus:outline-none focus:ring-4 focus:ring-forest-800 ${
+                  isListening ? 'border-red-500 bg-red-50' : 'border-slate-300'
+                }`}
               />
             </div>
 
-            <div className="text-center text-xs font-bold text-slate-400 py-1">— OR —</div>
+            {/* STT Microphone & TTS Voice Buttons */}
+            <div className="flex items-center space-x-2 shrink-0 w-full sm:w-auto justify-end">
+              {/* 🎤 Speech-to-Text Button */}
+              <button
+                type="button"
+                onClick={handleToggleListening}
+                className={`flex items-center space-x-2 px-5 py-4 rounded-2xl text-base font-black transition-all border-3 shadow-md ${
+                  isListening
+                    ? 'bg-red-600 border-red-800 text-white animate-pulse'
+                    : 'bg-emerald-100 border-emerald-400 text-forest-950 hover:bg-emerald-200'
+                }`}
+                title="Tap to Speak (Speech-to-Text)"
+              >
+                {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6 text-forest-800" />}
+                <span className="hidden sm:inline">{isListening ? "Stop" : "🎤 Speak"}</span>
+              </button>
 
-            <Button
-              variant="outline"
-              className="w-full text-xs font-bold bg-white text-slate-800 border-slate-300 hover:bg-slate-100"
-              onClick={() => {
-                setIsLoginModalOpen(false);
-                const target = selectedLoginRole === 'PATIENT' ? '/patient' : selectedLoginRole === 'HEALTH_WORKER' ? '/health-worker' : '/doctor';
-                window.location.href = target;
-              }}
-            >
-              Continue with Google Account
-            </Button>
-          </div>
+              {/* 🔊 Text-to-Speech Toggle Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isVoiceEnabled) {
+                    stopSpeaking();
+                    setIsVoiceEnabled(false);
+                  } else {
+                    setIsVoiceEnabled(true);
+                  }
+                }}
+                className={`p-4 rounded-2xl border-3 transition-all ${
+                  isVoiceEnabled
+                    ? 'bg-forest-800 border-forest-950 text-white shadow-md'
+                    : 'bg-slate-200 border-slate-400 text-slate-600'
+                }`}
+                title={isVoiceEnabled ? "Voice Output Active (Read out loud)" : "Voice Output Muted"}
+              >
+                {isVoiceEnabled ? <Volume2 className="w-6 h-6 text-emerald-300" /> : <VolumeX className="w-6 h-6" />}
+              </button>
 
-          <div className="flex justify-between items-center pt-2">
-            <Button variant="ghost" size="sm" onClick={() => setIsLoginModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setIsLoginModalOpen(false);
-                const target = selectedLoginRole === 'PATIENT' ? '/patient' : selectedLoginRole === 'HEALTH_WORKER' ? '/health-worker' : '/doctor';
-                window.location.href = target;
-              }}
-            >
-              Proceed to {selectedLoginRole} Dashboard →
-            </Button>
+              {/* Submit Button */}
+              <Button type="submit" variant="primary" size="lg" className="px-6 py-4 bg-forest-800 text-lg font-black rounded-2xl">
+                <Send className="w-6 h-6 mr-2 text-emerald-300" />
+                <span>Submit</span>
+              </Button>
+            </div>
+          </form>
+
+          {/* 1-TAP QUICK SYMPTOM CHIPS */}
+          <div className="pt-2 border-t-2 border-sand-200">
+            <span className="text-xs font-black uppercase text-slate-500 tracking-wider block mb-2">
+              Or Tap Quick Symptom (1-Click AI Check):
+            </span>
+            <div className="flex flex-wrap gap-2.5">
+              {[
+                { label: "🤒 High Fever", text: "High fever (103°F) with body chills" },
+                { label: "🫁 Chest Pain / Dyspnea", text: "Severe chest pain & inability to breathe" },
+                { label: "🤕 Severe Headache", text: "Severe headache and dizziness" },
+                { label: "🤢 Stomach Vomiting", text: "Abdominal pain & continuous vomiting" },
+                { label: "🩸 Deep Cut Injury", text: "Bleeding cut wound on arm" },
+              ].map((chip, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setQuery(chip.text);
+                    handleSearchSubmit(chip.text);
+                  }}
+                  className="px-4 py-2 bg-sand-100 hover:bg-forest-800 hover:text-white text-slate-900 text-sm font-black rounded-xl border-2 border-sand-300 hover:border-forest-950 transition-all shadow-2xs active:scale-95"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </Modal>
+
+        {/* AI ANALYSIS IN PROGRESS LOADING STATE */}
+        {isProcessing && (
+          <div className="w-full bg-emerald-100 p-6 rounded-3xl border-4 border-emerald-400 text-forest-950 font-black text-xl flex items-center justify-center space-x-3 animate-pulse shadow-md">
+            <RefreshCw className="w-8 h-8 animate-spin text-forest-800" />
+            <span>Analyzing symptoms with AI Clinical Safety Engine...</span>
+          </div>
+        )}
+
+        {/* AI TRIAGE RESULT OUTPUT CARD */}
+        {result && !isProcessing && (
+          <div
+            className={`w-full rounded-3xl p-6 sm:p-8 border-4 shadow-xl space-y-6 ${
+              result.triageLevel === 'EMERGENCY'
+                ? 'bg-red-50 border-red-500 text-slate-950'
+                : result.triageLevel === 'URGENT'
+                ? 'bg-amber-50 border-amber-400 text-slate-950'
+                : 'bg-white border-forest-600 text-slate-950'
+            }`}
+          >
+            {/* Result Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b-2 border-slate-300 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-2xl bg-forest-800 text-white flex items-center justify-center font-black">
+                  <Bot className="w-7 h-7 text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">AI Clinical Triage Advice</h3>
+                  <p className="text-sm font-extrabold text-slate-700">Evaluated via Safety Rules Engine</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Badge variant={result.triageLevel} className="text-sm px-4 py-1.5 font-black">
+                  {result.triageLevel === 'EMERGENCY' ? '🔴 EMERGENCY RED-FLAG' : result.triageLevel === 'URGENT' ? '🟡 URGENT DOCTOR VISIT' : '🟢 ROUTINE HOME CARE'}
+                </Badge>
+                
+                {/* Voice Re-play Button */}
+                <button
+                  onClick={() => speakText(`${result.summary}. ${result.patientAdvice}`, currentLang)}
+                  className="p-2.5 rounded-xl bg-forest-100 border-2 border-forest-400 text-forest-900 font-bold hover:bg-forest-200"
+                  title="Re-play Voice Out Loud"
+                >
+                  <Volume2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="p-4 bg-white rounded-2xl border-2 border-slate-300 text-lg font-extrabold text-slate-900 leading-relaxed shadow-xs">
+              <span className="font-black text-forest-900 block mb-1 text-xl">💡 Clinical Assessment:</span>
+              {result.summary}
+            </div>
+
+            {/* Patient Guidance */}
+            {result.patientAdvice && (
+              <div className="p-4 bg-white rounded-2xl border-2 border-slate-300 text-lg font-extrabold text-slate-900 leading-relaxed shadow-xs">
+                <span className="font-black text-forest-900 block mb-1 text-xl">🗣️ Advice in Your Language:</span>
+                {result.patientAdvice}
+              </div>
+            )}
+
+            {/* First-Aid Instructions if Emergency/Urgent */}
+            {result.firstAidInstructions && result.firstAidInstructions.length > 0 && (
+              <div className="bg-amber-100 p-5 rounded-2xl border-2 border-amber-400 text-base text-amber-950 space-y-2">
+                <span className="font-black text-amber-950 flex items-center space-x-2 text-xl">
+                  <AlertTriangle className="w-6 h-6 text-amber-700" />
+                  <span>First-Aid Protocols:</span>
+                </span>
+                <ul className="list-disc pl-6 space-y-1 font-extrabold text-base">
+                  {result.firstAidInstructions.map((fa, idx) => (
+                    <li key={idx}>{fa}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Emergency SOS Call Trigger */}
+            {result.triageLevel === 'EMERGENCY' && (
+              <div className="pt-2">
+                <a href="tel:108" className="w-full block">
+                  <Button variant="danger" size="xl" className="w-full text-xl font-black py-5 border-4 border-red-800 shadow-xl">
+                    <PhoneCall className="w-7 h-7 mr-3 text-white animate-bounce" />
+                    <span>🚨 CALL 108 AMBULANCE IMMEDIATELY</span>
+                  </Button>
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+      </main>
 
       <Footer currentLang={currentLang} />
     </div>

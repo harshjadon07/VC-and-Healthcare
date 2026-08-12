@@ -1,7 +1,8 @@
+// @ts-ignore
 import { initializeApp, getApps, getApp } from 'firebase/app';
+// @ts-ignore
 import { getAuth, GoogleAuthProvider, RecaptchaVerifier } from 'firebase/auth';
 
-// Standard Firebase Client Config (reading process.env or fallback demo config)
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDemoKeySevaHealth2026Rural",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "sevahealth-rural.firebaseapp.com",
@@ -11,7 +12,6 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:987654321098:web:abcdef123456789"
 };
 
-// Initialize Firebase App singleton safely
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);

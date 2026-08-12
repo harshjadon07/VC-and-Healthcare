@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Clock, AlertTriangle, ChevronRight, UserCheck } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { MockPatient } from '@/lib/mock-data';
 
@@ -16,67 +16,66 @@ export const AppointmentList: React.FC<AppointmentListProps> = ({
   selectedPatientId,
   onSelectPatient,
 }) => {
-  // Sort patients so Emergency & Urgent are at the top
   const sortedPatients = [...patients].sort((a, b) => {
     const priority = { EMERGENCY: 1, URGENT: 2, ROUTINE: 3 };
     return priority[a.triageLevel] - priority[b.triageLevel];
   });
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-      <div className="p-4 border-b border-slate-100 bg-sand-50/60 flex items-center justify-between">
+    <div className="bg-white rounded-3xl border-4 border-sand-300 shadow-md overflow-hidden flex flex-col h-full">
+      <div className="p-5 border-b-4 border-sand-200 bg-sand-50 flex items-center justify-between">
         <div>
-          <div className="flex items-center space-x-2 text-forest-800 text-xs font-bold uppercase tracking-wider mb-0.5">
-            <Calendar className="w-3.5 h-3.5" />
+          <div className="flex items-center space-x-2 text-forest-800 text-xs font-black uppercase tracking-wider mb-0.5">
+            <Calendar className="w-4 h-4" />
             <span>Tele-Clinic Schedule</span>
           </div>
-          <h3 className="text-base font-bold text-slate-900">Today&apos;s Consultations</h3>
+          <h3 className="text-xl font-black text-slate-950">Today&apos;s Consultations</h3>
         </div>
-        <span className="text-xs font-extrabold px-2.5 py-1 bg-forest-100 text-forest-900 rounded-full">
+        <span className="text-sm font-black px-3 py-1 bg-forest-100 text-forest-950 rounded-full border border-forest-300">
           {patients.length} Total
         </span>
       </div>
 
-      <div className="divide-y divide-slate-100 overflow-y-auto max-h-[620px]">
+      <div className="divide-y-2 divide-slate-200 overflow-y-auto max-h-[620px]">
         {sortedPatients.map((patient) => {
           const isSelected = patient.id === selectedPatientId;
           return (
             <div
               key={patient.id}
               onClick={() => onSelectPatient(patient)}
-              className={`p-4 cursor-pointer transition-all border-l-4 ${
+              className={`p-5 cursor-pointer transition-all border-l-8 ${
                 isSelected
-                  ? 'bg-forest-50/80 border-l-forest-800 shadow-2xs'
+                  ? 'bg-forest-100/90 border-l-forest-800 shadow-sm'
                   : patient.triageLevel === 'EMERGENCY'
-                  ? 'bg-red-50/30 hover:bg-red-50/60 border-l-red-500'
-                  : 'hover:bg-slate-50 border-l-transparent'
+                  ? 'bg-red-50 hover:bg-red-100/80 border-l-red-600'
+                  : 'hover:bg-sand-50 border-l-transparent'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-2">
                   {patient.triageLevel === 'EMERGENCY' && (
-                    <AlertTriangle className="w-4 h-4 text-red-600 animate-pulse shrink-0" />
+                    <AlertTriangle className="w-5 h-5 text-red-600 animate-bounce shrink-0" />
                   )}
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">{patient.name}</h4>
-                    <p className="text-xs text-slate-500 font-medium">{patient.village} • {patient.age} yrs ({patient.gender})</p>
+                    <h4 className="text-lg font-black text-slate-950">{patient.name}</h4>
+                    <p className="text-sm font-extrabold text-slate-700">{patient.village} • {patient.age} yrs ({patient.gender})</p>
                   </div>
                 </div>
-                <Badge variant={patient.triageLevel}>{patient.triageLevel}</Badge>
+                <Badge variant={patient.triageLevel} className="text-xs px-2.5 py-0.5 font-black">{patient.triageLevel}</Badge>
               </div>
 
-              <p className="text-xs text-slate-700 mt-2 line-clamp-1 font-medium italic">
+              <p className="text-sm text-slate-800 mt-2 line-clamp-1 font-extrabold italic">
                 &quot;{patient.chiefComplaint}&quot;
               </p>
 
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100/60 text-xs">
-                <span className="text-slate-500 font-mono flex items-center space-x-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-200 text-xs font-black">
+                <span className="text-slate-600 font-mono flex items-center space-x-1">
+                  <Clock className="w-4 h-4 text-slate-500" />
                   <span>{patient.dateTime}</span>
                 </span>
-                <span className={`font-bold flex items-center space-x-1 ${isSelected ? 'text-forest-800' : 'text-slate-400'}`}>
+                <span className={`flex items-center space-x-1 text-sm ${isSelected ? 'text-forest-900 font-black' : 'text-slate-500'}`}>
                   <span>Select</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="w-4 h-4" />
                 </span>
               </div>
             </div>

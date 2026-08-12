@@ -1,24 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Bot, Send, ShieldAlert, AlertTriangle, ArrowLeft, RefreshCw, Sparkles, CheckCircle2, PhoneCall } from 'lucide-react';
+import { Bot, Mic, MicOff, Volume2, VolumeX, Send, RefreshCw, AlertTriangle, ArrowLeft, PhoneCall, Sparkles } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Language, dictionaries } from '@/lib/i18n/dictionary';
+import { SpeechToTextEngine, speakText, stopSpeaking } from '@/lib/speech';
 
 interface ChatMessage {
   id: string;
   sender: 'user' | 'assistant';
   text: string;
   triageLevel?: 'EMERGENCY' | 'URGENT' | 'ROUTINE';
-  symptomsDetected?: string[];
   patientAdvice?: string;
   recommendedActions?: string[];
   firstAidInstructions?: string[];
-  emergencyAlertTriggered?: boolean;
   timestamp: string;
 }
 
@@ -26,21 +25,66 @@ export default function AIAssistantPage() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
   const [inputQuery, setInputQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
 
+  const sttEngineRef = useRef<SpeechToTextEngine | null>(null);
   const dict = dictionaries[currentLang] || dictionaries.en;
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'msg-0',
       sender: 'assistant',
-      text: "Namaste! I am your AI Health Assistant. Please describe your symptoms in simple language (e.g., fever, chest pain, cough, injury). I will provide instant clinical triage guidance.",
+      text: "Namaste! I am your AI Health Assistant. Please tap the microphone to speak or type your symptoms. I will guide you out loud.",
       timestamp: 'Just now',
     },
   ]);
 
+  useEffect(() => {
+    sttEngineRef.current = new SpeechToTextEngine();
+    return () => {
+      stopSpeaking();
+      if (sttEngineRef.current) {
+        sttEngineRef.current.stopListening();
+      }
+    };
+  }, []);
+
+  const handleToggleListening = () => {
+    if (!sttEngineRef.current || !sttEngineRef.current.isSupported()) {
+      alert("Speech recognition is not supported in this browser. You can type your symptoms.");
+      return;
+    }
+
+    if (isListening) {
+      sttEngineRef.current.stopListening();
+      setIsListening(false);
+    } else {
+      setIsListening(true);
+      sttEngineRef.current.startListening({
+        language: currentLang,
+        onTranscript: (transcript) => {
+          setInputQuery(transcript);
+        },
+        onEnd: () => {
+          setIsListening(false);
+        },
+        onError: (err) => {
+          console.error("Speech recognition error:", err);
+          setIsListening(false);
+        },
+      });
+    }
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const query = textToSend || inputQuery;
     if (!query.trim()) return;
+
+    if (isListening && sttEngineRef.current) {
+      sttEngineRef.current.stopListening();
+      setIsListening(false);
+    }
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -52,9 +96,9 @@ export default function AIAssistantPage() {
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputQuery('');
     setIsProcessing(true);
+    stopSpeaking();
 
     try {
-      // Call Real AI Triage API Route with Safety Rules Engine
       const res = await fetch('/api/ai/triage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,29 +112,19 @@ export default function AIAssistantPage() {
         sender: 'assistant',
         text: data.summary || "Assessed clinical status:",
         triageLevel: data.triageLevel,
-        symptomsDetected: data.symptomsDetected,
         patientAdvice: data.patientAdvice,
         recommendedActions: data.recommendedActions,
         firstAidInstructions: data.firstAidInstructions,
-        emergencyAlertTriggered: data.emergencyAlertTriggered,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+
+      if (isVoiceEnabled && data.patientAdvice) {
+        speakText(`${data.summary}. ${data.patientAdvice}`, currentLang);
+      }
     } catch (err) {
-      console.error("AI Triage API Call Error:", err);
-      // Fallback
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-err-${Date.now()}`,
-          sender: 'assistant',
-          text: "Symptom processed via offline safety engine.",
-          triageLevel: 'ROUTINE',
-          patientAdvice: "Please visit the nearest ASHA health worker or PHC clinic.",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
+      console.error("AI Triage API Error:", err);
     } finally {
       setIsProcessing(false);
     }
@@ -100,38 +134,62 @@ export default function AIAssistantPage() {
     <div className="min-h-screen flex flex-col justify-between bg-sand-50">
       <Navbar currentLang={currentLang} onLanguageChange={setCurrentLang} />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full flex flex-col">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full flex flex-col space-y-4">
         {/* Header Ribbon */}
-        <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center justify-between bg-white p-4 sm:p-5 rounded-3xl border-4 border-sand-300 shadow-md">
           <div className="flex items-center space-x-3">
-            <Link href="/patient">
-              <Button variant="ghost" size="sm" className="p-2">
-                <ArrowLeft className="w-5 h-5 text-slate-600" />
+            <Link href="/">
+              <Button variant="outline" size="md" className="p-3">
+                <ArrowLeft className="w-6 h-6 text-slate-800" />
               </Button>
             </Link>
-            <div className="w-10 h-10 rounded-xl bg-forest-800 text-white flex items-center justify-center">
-              <Bot className="w-6 h-6 text-emerald-400" />
+            <div className="w-12 h-12 rounded-2xl bg-forest-800 text-white flex items-center justify-center">
+              <Bot className="w-7 h-7 text-emerald-300" />
             </div>
             <div>
-              <h1 className="text-base font-black text-slate-900 leading-tight">
-                SevaHealth AI Clinical Assistant
+              <h1 className="text-xl sm:text-2xl font-black text-slate-950 leading-tight">
+                AI Health Assistant (Voice + Text)
               </h1>
-              <p className="text-xs text-slate-600 font-medium">
-                Public Entry • Deterministic Safety Rules Engine Active
+              <p className="text-sm font-extrabold text-forest-800">
+                Speech-to-Text & Voice Readout Active
               </p>
             </div>
           </div>
 
           <a href="tel:108">
-            <Button variant="danger" size="sm" className="text-xs">
-              <PhoneCall className="w-3.5 h-3.5 mr-1" />
-              Emergency 108
+            <Button variant="danger" size="md" className="text-base font-black px-4 py-3 rounded-2xl">
+              <PhoneCall className="w-5 h-5 mr-1" />
+              108 Emergency
             </Button>
           </a>
         </div>
 
-        {/* Chat Message Box */}
-        <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 overflow-y-auto space-y-4 min-h-[420px] max-h-[550px]">
+        {/* 1-Tap Symptom Chips */}
+        <div className="bg-white p-4 rounded-3xl border-4 border-sand-300 shadow-sm space-y-2">
+          <span className="text-sm font-black text-slate-900 flex items-center space-x-1.5">
+            <Sparkles className="w-4 h-4 text-forest-800" />
+            <span>Tap Quick Symptom:</span>
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "🤒 High Fever", text: "High fever (103°F) with body chills" },
+              { label: "🫁 Chest Pain", text: "Severe chest pain & shortness of breath" },
+              { label: "🤕 Severe Headache", text: "Severe headache and dizziness" },
+              { label: "🤢 Vomiting", text: "Abdominal cramps & watery diarrhea" },
+            ].map((chip, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendMessage(chip.text)}
+                className="px-3.5 py-1.5 bg-sand-100 hover:bg-forest-800 hover:text-white text-slate-900 text-sm font-black rounded-xl border-2 border-sand-300 transition-all"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Chat Display Box */}
+        <div className="flex-1 bg-white rounded-3xl border-4 border-sand-300 shadow-md p-4 sm:p-6 overflow-y-auto space-y-6 min-h-[380px] max-h-[500px]">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -140,135 +198,100 @@ export default function AIAssistantPage() {
               }`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl p-4 space-y-3 ${
+                className={`max-w-[85%] rounded-3xl p-5 space-y-3 border-2 ${
                   msg.sender === 'user'
-                    ? 'bg-forest-800 text-white rounded-tr-none'
+                    ? 'bg-forest-800 text-white border-forest-950 rounded-tr-none'
                     : msg.triageLevel === 'EMERGENCY'
-                    ? 'bg-red-50 border-2 border-red-300 text-slate-900 rounded-tl-none'
-                    : 'bg-sand-100/90 border border-sand-200 text-slate-900 rounded-tl-none'
+                    ? 'bg-red-50 border-4 border-red-500 text-slate-950 rounded-tl-none'
+                    : 'bg-sand-100 border-2 border-sand-300 text-slate-950 rounded-tl-none'
                 }`}
               >
-                {/* Header info */}
-                <div className="flex items-center justify-between gap-2 border-b border-black/10 pb-1.5 text-xs">
-                  <span className="font-bold flex items-center space-x-1">
-                    {msg.sender === 'assistant' ? (
-                      <>
-                        <Bot className="w-4 h-4 text-forest-700 inline" />
-                        <span>Clinical AI Triage</span>
-                      </>
-                    ) : (
-                      <span>You</span>
-                    )}
-                  </span>
-                  <span className="opacity-70 text-[10px] font-mono">{msg.timestamp}</span>
+                <div className="flex items-center justify-between gap-3 border-b-2 border-black/10 pb-2 text-sm font-black">
+                  <span>{msg.sender === 'assistant' ? 'AI Advice' : 'You'}</span>
+                  <span className="opacity-75 text-xs font-mono">{msg.timestamp}</span>
                 </div>
 
-                <p className="text-sm font-medium leading-relaxed">{msg.text}</p>
+                <p className="text-base sm:text-lg font-extrabold leading-relaxed">{msg.text}</p>
 
-                {/* Structured Triage Output if Assistant */}
-                {msg.sender === 'assistant' && msg.triageLevel && (
-                  <div className="space-y-3 pt-2 border-t border-slate-200/80">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold text-slate-600">Assessed Priority:</span>
-                      <Badge variant={msg.triageLevel}>{msg.triageLevel}</Badge>
-                    </div>
-
-                    {msg.patientAdvice && (
-                      <div className="p-3 bg-white/90 rounded-lg border border-slate-200 text-xs font-medium text-slate-800">
-                        <span className="font-bold text-forest-900 block mb-1">Patient Guidance:</span>
-                        {msg.patientAdvice}
-                      </div>
-                    )}
-
-                    {msg.recommendedActions && (
-                      <div className="bg-white/90 p-3 rounded-lg border border-slate-200 text-xs">
-                        <span className="font-bold text-slate-900 block mb-1">Recommended Actions:</span>
-                        <ul className="list-disc pl-4 text-slate-700 space-y-1">
-                          {msg.recommendedActions.map((act, idx) => (
-                            <li key={idx}>{act}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {msg.firstAidInstructions && (
-                      <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 text-xs text-amber-950">
-                        <span className="font-bold text-amber-900 flex items-center space-x-1 mb-1">
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 inline" />
-                          <span>First-Aid Protocols:</span>
-                        </span>
-                        <ul className="list-disc pl-4 space-y-1 font-medium">
-                          {msg.firstAidInstructions.map((fa, idx) => (
-                            <li key={idx}>{fa}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {msg.emergencyAlertTriggered && (
-                      <div className="p-3 bg-red-600 text-white rounded-lg text-xs font-bold flex items-center justify-between">
-                        <span>🚨 Emergency SOS Alert Triggered for ASHA Queue</span>
-                        <Link href="/patient">
-                          <button className="underline text-white font-black text-xs hover:text-red-100">
-                            View Dashboard →
-                          </button>
-                        </Link>
-                      </div>
-                    )}
+                {msg.sender === 'assistant' && msg.patientAdvice && (
+                  <div className="p-3 bg-white rounded-xl border-2 border-slate-300 text-base font-extrabold text-slate-900">
+                    <span className="font-black text-forest-900 block mb-1">Patient Advice:</span>
+                    {msg.patientAdvice}
                   </div>
+                )}
+
+                {msg.sender === 'assistant' && (
+                  <button
+                    onClick={() => speakText(`${msg.text}. ${msg.patientAdvice || ''}`, currentLang)}
+                    className="flex items-center space-x-1.5 text-xs font-black text-forest-900 bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-400 hover:bg-emerald-200"
+                  >
+                    <Volume2 className="w-4 h-4 text-forest-800" />
+                    <span>Read Out Loud</span>
+                  </button>
                 )}
               </div>
             </div>
           ))}
 
           {isProcessing && (
-            <div className="flex items-center space-x-2 text-xs font-bold text-forest-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200 max-w-xs animate-pulse">
-              <RefreshCw className="w-4 h-4 animate-spin text-forest-700" />
-              <span>Analyzing symptoms via Clinical Safety Engine...</span>
+            <div className="flex items-center space-x-3 text-base font-black text-forest-900 bg-emerald-100 p-4 rounded-2xl border-2 border-emerald-400 max-w-xs animate-pulse">
+              <RefreshCw className="w-5 h-5 animate-spin text-forest-800" />
+              <span>Analyzing symptoms...</span>
             </div>
           )}
         </div>
 
-        {/* Quick Symptom Chips */}
-        <div className="my-3">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-            Test Quick Symptoms:
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {[
-              "Severe chest pain & shortness of breath",
-              "High fever (103°F) with body chills",
-              "Persistent dry cough for 2 weeks",
-              "Abdominal cramps & watery diarrhea"
-            ].map((chip, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage(chip)}
-                className="px-3 py-1.5 bg-white border border-slate-300 hover:border-forest-700 hover:bg-forest-50 text-slate-800 text-xs font-semibold rounded-lg transition-all text-left shadow-2xs"
-              >
-                + {chip}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Query Input Bar */}
+        {/* Input Bar with STT & TTS */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleSendMessage();
           }}
-          className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-slate-300 shadow-sm"
+          className="flex items-center space-x-3 bg-white p-3 rounded-3xl border-4 border-sand-300 shadow-md"
         >
           <input
             type="text"
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
-            placeholder="Type symptoms in plain English, Hindi, or regional text..."
-            className="flex-1 px-4 py-3 text-sm font-semibold text-slate-900 bg-transparent focus:outline-none"
+            placeholder={
+              isListening ? "Listening... Speak now..." : "Type or speak symptoms in your language..."
+            }
+            className={`flex-1 px-4 py-3 text-base sm:text-lg font-extrabold text-slate-950 bg-sand-50 border-2 rounded-2xl focus:outline-none ${
+              isListening ? 'border-red-500 bg-red-50' : 'border-slate-300'
+            }`}
           />
-          <Button type="submit" variant="primary" size="md" className="shrink-0">
-            <Send className="w-4 h-4 mr-1" />
+
+          <button
+            type="button"
+            onClick={handleToggleListening}
+            className={`p-3.5 rounded-2xl border-2 transition-all ${
+              isListening ? 'bg-red-600 border-red-800 text-white animate-pulse' : 'bg-emerald-100 border-emerald-400 text-forest-950 hover:bg-emerald-200'
+            }`}
+            title="🎤 Microphone (Speech-to-Text)"
+          >
+            {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6 text-forest-800" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (isVoiceEnabled) {
+                stopSpeaking();
+                setIsVoiceEnabled(false);
+              } else {
+                setIsVoiceEnabled(true);
+              }
+            }}
+            className={`p-3.5 rounded-2xl border-2 transition-all ${
+              isVoiceEnabled ? 'bg-forest-800 border-forest-950 text-white' : 'bg-slate-200 border-slate-400 text-slate-600'
+            }`}
+            title={isVoiceEnabled ? "Voice Output Active" : "Voice Output Muted"}
+          >
+            {isVoiceEnabled ? <Volume2 className="w-6 h-6 text-emerald-300" /> : <VolumeX className="w-6 h-6" />}
+          </button>
+
+          <Button type="submit" variant="primary" size="lg" className="px-6 py-3.5 bg-forest-800 font-black">
+            <Send className="w-5 h-5 mr-1" />
             <span>Send</span>
           </Button>
         </form>
