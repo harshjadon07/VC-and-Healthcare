@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { HeartPulse, Globe, PhoneCall, Menu, X, User, Users, Stethoscope } from 'lucide-react';
+import { HeartPulse, Globe, PhoneCall, Menu, X, User, Users, Stethoscope, LogIn, LogOut } from 'lucide-react';
 import { Language, dictionaries } from '@/lib/i18n/dictionary';
+import { useAuth, UserRole } from '@/context/AuthContext';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 interface NavbarProps {
   currentLang: Language;
@@ -11,8 +13,17 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentLang, onLanguageChange }) => {
+  const { user, role, signOutUser } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [targetRole, setTargetRole] = useState<UserRole>('PATIENT');
+
   const dict = dictionaries[currentLang] || dictionaries.en;
+
+  const handleOpenLogin = (r: UserRole = 'PATIENT') => {
+    setTargetRole(r);
+    setIsAuthModalOpen(true);
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b-4 border-forest-800 shadow-md">
@@ -28,7 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentLang, onLanguageChange })
                 {dict.appName}
               </span>
               <span className="text-xs sm:text-sm font-extrabold text-forest-800">
-                ग्रामीण आरोग्य • AI Health Platform
+                ग्रामीण आरोग्य • AI Healthcare Platform
               </span>
             </div>
           </Link>
@@ -60,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentLang, onLanguageChange })
             </Link>
           </div>
 
-          {/* Right Actions: 108 Emergency Call & Language Switcher */}
+          {/* Right Actions: 108 Emergency Call, Language & LOGIN / PROFILE */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* 108 Emergency Call Button */}
             <a
@@ -86,6 +97,37 @@ export const Navbar: React.FC<NavbarProps> = ({ currentLang, onLanguageChange })
                 <option value="ta" className="font-bold">தமிழ் (Tamil)</option>
               </select>
             </div>
+
+            {/* LOGIN BUTTON OR USER PROFILE BADGE */}
+            {user ? (
+              <div className="flex items-center space-x-2 shrink-0">
+                <Link
+                  href={role === 'HEALTH_WORKER' ? '/health-worker' : role === 'DOCTOR' ? '/doctor' : '/patient'}
+                  className="px-3 py-2 bg-emerald-100 border-2 border-emerald-400 text-forest-950 rounded-2xl text-xs sm:text-sm font-black flex items-center space-x-1.5 hover:bg-emerald-200 transition-all shadow-2xs"
+                >
+                  <User className="w-4 h-4 text-forest-800" />
+                  <span className="max-w-[120px] truncate">{user.name || user.email?.split('@')[0]}</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={signOutUser}
+                  className="p-2 rounded-2xl bg-sand-100 border-2 border-sand-300 text-red-600 hover:bg-red-50 transition-all"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenLogin('PATIENT')}
+                className="flex items-center space-x-1.5 px-4 py-2.5 bg-forest-800 hover:bg-forest-900 border-2 border-forest-950 text-white rounded-2xl text-xs sm:text-base font-black transition-all shadow-md shrink-0"
+              >
+                <LogIn className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-300" />
+                <span>Gmail / Login</span>
+              </button>
+            )}
 
             {/* Mobile / Collapsible Portal Menu Button */}
             <button
@@ -139,6 +181,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentLang, onLanguageChange })
           </div>
         )}
       </div>
+
+      {/* Supabase Gmail & Email Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        defaultRole={targetRole}
+      />
     </header>
   );
 };

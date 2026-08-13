@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTokenQueue, createTokenTicket, findTokenByNumber, updateTokenStatus, TokenTicket } from '@/lib/token-queue';
+import { getTokenQueue, createTokenTicket, findTokenByNumber, updateTokenStatus } from '@/lib/token-queue';
+import { saveAppointmentToSupabase, updateAppointmentInSupabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,12 +26,32 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/queue -> Generates new unique Patient Token Ticket
+// POST /api/queue -> Generates new unique Patient Token Ticket & saves to Supabase
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const newToken = createTokenTicket(body);
-    return NextResponse.json({ success: true, message: 'Token Ticket generated', ticket: newToken }, { status: 201 });
+
+    // Save to Supabase Backend
+    await saveAppointmentToSupabase({
+      patient_name: newToken.patientName,
+      age: newToken.age,
+      gender: newToken.gender,
+      village: newToken.village,
+      district: newToken.district,
+      phone: newToken.phone,
+      chief_complaint: newToken.chiefComplaint,
+      triage_level: newToken.triageLevel,
+      status: newToken.status,
+      vitals: newToken.vitals,
+      ai_summary: newToken.aiSummary,
+      symptoms: newToken.symptoms,
+      patient_advice: newToken.patientAdvice,
+      recommended_actions: newToken.recommendedActions,
+      token_number: newToken.tokenNumber
+    });
+
+    return NextResponse.json({ success: true, message: 'Token Ticket generated & saved to Supabase', ticket: newToken }, { status: 201 });
   } catch (error) {
     console.error('Create Token API Error:', error);
     return NextResponse.json({ success: false, error: 'Failed to generate token' }, { status: 500 });
@@ -48,8 +69,15 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = updateTokenStatus(tokenNumber, status, prescription);
+    
+    // Also update in Supabase backend
+    const updates: Record<string, any> = {};
+    if (status) updates.status = status;
+    if (prescription) updates.prescription = prescription;
+    await updateAppointmentInSupabase(tokenNumber, updates);
+
     if (updated) {
-      return NextResponse.json({ success: true, message: 'Token updated', ticket: updated }, { status: 200 });
+      return NextResponse.json({ success: true, message: 'Token updated & synced to Supabase', ticket: updated }, { status: 200 });
     }
     return NextResponse.json({ success: false, error: 'Token not found' }, { status: 404 });
   } catch (error) {
@@ -57,3 +85,4 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Failed to update token' }, { status: 500 });
   }
 }
+

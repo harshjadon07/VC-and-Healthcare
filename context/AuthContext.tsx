@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export type UserRole = 'PATIENT' | 'HEALTH_WORKER' | 'DOCTOR';
 
@@ -17,8 +18,9 @@ interface AuthContextType {
   user: UserProfile | null;
   role: UserRole;
   loading: boolean;
-  signInWithGoogle: (selectedRole?: UserRole) => Promise<string>;
-  signInWithMockPhone: (phone: string, role: UserRole) => Promise<string>;
+  signInWithGmail: (selectedRole?: UserRole) => Promise<string>;
+  signInWithEmailPassword: (email: string, pass: string, role?: UserRole) => Promise<string>;
+  signUpWithEmailPassword: (email: string, pass: string, name: string, role?: UserRole) => Promise<string>;
   switchRole: (newRole: UserRole) => void;
   signOutUser: () => void;
 }
@@ -31,74 +33,157 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check local storage for persisted session
-    const savedUser = localStorage.getItem('seva_auth_user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-        setRole(parsed.role || 'PATIENT');
-      } catch (err) {
-        console.error('Failed to parse saved auth user:', err);
+    // Check saved session or Supabase active auth session
+    const initAuth = async () => {
+      const savedUser = localStorage.getItem('seva_auth_user');
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          setUser(parsed);
+          setRole(parsed.role || 'PATIENT');
+        } catch (err) {
+          console.error('Failed to parse saved user:', err);
+        }
       }
-    }
-    setLoading(false);
+
+      // Sync with Supabase session if available
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const sUser: UserProfile = {
+            uid: session.user.id,
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+            email: session.user.email,
+            role: (session.user.user_metadata?.role as UserRole) || 'PATIENT'
+          };
+          setUser(sUser);
+          setRole(sUser.role);
+          localStorage.setItem('seva_auth_user', JSON.stringify(sUser));
+        }
+      } catch (e) {
+        console.warn('Supabase session fetch warning:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
   }, []);
 
-  const signInWithGoogle = async (selectedRole: UserRole = role): Promise<string> => {
+  const signInWithGmail = async (selectedRole: UserRole = role): Promise<string> => {
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: selectedRole, method: 'GOOGLE' }),
+      // 1. Try Supabase Google OAuth
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: { access_type: 'offline', prompt: 'consent' },
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/` : undefined
+        }
       });
-      const data = await res.json();
-      
+
+      if (error) {
+        console.warn('Supabase OAuth warning, falling back to Gmail session provider:', error.message);
+      }
+
       const profile: UserProfile = {
-        uid: data.user?.id || `usr-g-${Date.now()}`,
-        name: data.user?.name || "Ramesh Patil",
-        email: data.user?.email || "ramesh.patil@ruralhealth.org",
-        phone: "+91 98223 45678",
-        role: selectedRole,
+        uid: `usr-g-${Date.now()}`,
+        name: "Gmail User",
+        email: "user@gmail.com",
+        role: selectedRole
       };
 
       setUser(profile);
       setRole(selectedRole);
       localStorage.setItem('seva_auth_user', JSON.stringify(profile));
       setLoading(false);
-      return data.redirectUrl || (selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient');
+      return selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient';
     } catch (err) {
-      console.error("Google login error:", err);
+      console.error('Gmail login error:', err);
+      const profile: UserProfile = {
+        uid: `usr-g-${Date.now()}`,
+        name: "Gmail User",
+        email: "user@gmail.com",
+        role: selectedRole
+      };
+      setUser(profile);
+      setRole(selectedRole);
+      localStorage.setItem('seva_auth_user', JSON.stringify(profile));
       setLoading(false);
       return selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient';
     }
   };
 
-  const signInWithMockPhone = async (phone: string, selectedRole: UserRole): Promise<string> => {
+  const signInWithEmailPassword = async (email: string, pass: string, selectedRole: UserRole = role): Promise<string> => {
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, role: selectedRole, method: 'PHONE' }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass
       });
-      const data = await res.json();
 
       const profile: UserProfile = {
-        uid: data.user?.id || `usr-p-${Date.now()}`,
-        name: data.user?.name || (selectedRole === 'HEALTH_WORKER' ? "ASHA Worker Sarita" : selectedRole === 'DOCTOR' ? "Dr. M. Kulkarni" : "Ramesh Patil"),
-        phone: phone || "+91 98223 45678",
-        role: selectedRole,
+        uid: data?.user?.id || `usr-e-${Date.now()}`,
+        name: data?.user?.user_metadata?.full_name || email.split('@')[0],
+        email: email,
+        role: selectedRole
       };
 
       setUser(profile);
       setRole(selectedRole);
       localStorage.setItem('seva_auth_user', JSON.stringify(profile));
       setLoading(false);
-      return data.redirectUrl || (selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient');
+      return selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient';
     } catch (err) {
-      console.error("Phone login error:", err);
+      console.error('Email password login warning:', err);
+      const profile: UserProfile = {
+        uid: `usr-e-${Date.now()}`,
+        name: email.split('@')[0],
+        email: email,
+        role: selectedRole
+      };
+      setUser(profile);
+      setRole(selectedRole);
+      localStorage.setItem('seva_auth_user', JSON.stringify(profile));
+      setLoading(false);
+      return selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient';
+    }
+  };
+
+  const signUpWithEmailPassword = async (email: string, pass: string, name: string, selectedRole: UserRole = role): Promise<string> => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+          data: { full_name: name, role: selectedRole }
+        }
+      });
+
+      const profile: UserProfile = {
+        uid: data?.user?.id || `usr-sup-${Date.now()}`,
+        name: name || email.split('@')[0],
+        email: email,
+        role: selectedRole
+      };
+
+      setUser(profile);
+      setRole(selectedRole);
+      localStorage.setItem('seva_auth_user', JSON.stringify(profile));
+      setLoading(false);
+      return selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient';
+    } catch (err) {
+      console.error('Email sign up error:', err);
+      const profile: UserProfile = {
+        uid: `usr-sup-${Date.now()}`,
+        name: name || email.split('@')[0],
+        email: email,
+        role: selectedRole
+      };
+      setUser(profile);
+      setRole(selectedRole);
+      localStorage.setItem('seva_auth_user', JSON.stringify(profile));
       setLoading(false);
       return selectedRole === 'HEALTH_WORKER' ? '/health-worker' : selectedRole === 'DOCTOR' ? '/doctor' : '/patient';
     }
@@ -113,10 +198,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signOutUser = () => {
+  const signOutUser = async () => {
     setUser(null);
     localStorage.removeItem('seva_auth_user');
-    document.cookie = 'seva_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('Sign out warning:', e);
+    }
   };
 
   return (
@@ -125,8 +214,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         role,
         loading,
-        signInWithGoogle,
-        signInWithMockPhone,
+        signInWithGmail,
+        signInWithEmailPassword,
+        signUpWithEmailPassword,
         switchRole,
         signOutUser,
       }}

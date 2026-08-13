@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Mic, MicOff, Volume2, VolumeX, Send, RefreshCw, AlertTriangle, PhoneCall, Sparkles, Image as ImageIcon, X, FileText, Paperclip, Cpu } from 'lucide-react';
+import { Bot, Mic, MicOff, Volume2, VolumeX, Send, RefreshCw, AlertTriangle, PhoneCall, Image as ImageIcon, X, FileText, Paperclip, Cpu } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
