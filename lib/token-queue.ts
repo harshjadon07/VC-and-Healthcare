@@ -34,7 +34,7 @@ export const generateUniqueTokenNumber = (): string => {
 
 export const createTokenTicket = (data: Partial<TokenTicket>): TokenTicket => {
   const newToken: TokenTicket = {
-    tokenNumber: generateUniqueTokenNumber(),
+    tokenNumber: data.tokenNumber || generateUniqueTokenNumber(),
     patientName: data.patientName || 'Anonymous Patient',
     age: data.age || 40,
     gender: data.gender || 'Male',

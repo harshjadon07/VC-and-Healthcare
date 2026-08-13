@@ -73,7 +73,7 @@ export async function saveAppointmentToSupabase(data: SupabaseAppointment) {
       return { success: true, data: inserted?.[0] || payload };
     }
 
-    return { success: true, data: payload, note: 'Saved to local queue and Supabase payload prepared' };
+    return { success: true, data: payload, note: 'Saved to Supabase payload prepared' };
   } catch (err) {
     console.error('Supabase Save Appointment Error:', err);
     return { success: false, error: err };
@@ -103,7 +103,6 @@ export async function getAppointmentsFromSupabase() {
 // Function to update an appointment (e.g. status or prescription) in Supabase backend
 export async function updateAppointmentInSupabase(idOrToken: string, updates: Record<string, any>) {
   try {
-    // Attempt update by ID first
     let { data, error } = await supabase
       .from('appointments')
       .update(updates)
@@ -111,7 +110,6 @@ export async function updateAppointmentInSupabase(idOrToken: string, updates: Re
       .select();
 
     if (error || !data || data.length === 0) {
-      // Fallback attempt update by token_number
       const tokenRes = await supabase
         .from('appointments')
         .update(updates)
@@ -159,4 +157,3 @@ export async function signInWithSupabaseEmailPassword(email: string, pass: strin
     throw err;
   }
 }
-

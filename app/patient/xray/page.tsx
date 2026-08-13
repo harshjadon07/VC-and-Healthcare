@@ -22,7 +22,7 @@ interface XrayPredictionResult {
 
 export default function DedicatedXrayPage() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
-  const [serverUrl, setServerUrl] = useState('https://623a7d62937c60c507.gradio.live/');
+  const [serverUrl, setServerUrl] = useState('https://01aa370f95b7ee9914.gradio.live/');
   const [patientName, setPatientName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -104,7 +104,7 @@ export default function DedicatedXrayPage() {
                 <span>🩻 Chest X-Ray AI Diagnostic Center</span>
               </h1>
               <p className="text-base text-slate-700 font-extrabold mt-1">
-                Upload X-Rays directly to your Gradio Live Website (<code className="font-mono text-forest-900 font-black">https://623a7d62937c60c507.gradio.live/</code>).
+                Upload X-Rays directly to your Gradio Live Website (<code className="font-mono text-forest-900 font-black">https://01aa370f95b7ee9914.gradio.live/</code>).
               </p>
             </div>
 
@@ -139,13 +139,13 @@ export default function DedicatedXrayPage() {
                 type="text"
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
-                placeholder="https://623a7d62937c60c507.gradio.live/"
+                placeholder="https://01aa370f95b7ee9914.gradio.live/"
                 className="flex-1 text-sm font-mono font-black p-3 bg-sand-50 border-2 border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-forest-800"
               />
               <div className="flex space-x-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setServerUrl('https://623a7d62937c60c507.gradio.live/')}
+                  onClick={() => setServerUrl('https://01aa370f95b7ee9914.gradio.live/')}
                   className={`px-4 py-3 text-xs font-black rounded-2xl border-2 transition-all ${
                     serverUrl.includes('gradio.live')
                       ? 'bg-forest-800 text-white border-forest-950 shadow-xs'

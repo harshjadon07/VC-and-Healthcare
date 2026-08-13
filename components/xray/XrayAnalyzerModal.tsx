@@ -21,7 +21,7 @@ interface XrayAnalyzerModalProps {
 }
 
 export const XrayAnalyzerModal: React.FC<XrayAnalyzerModalProps> = ({ isOpen, onClose }) => {
-  const [serverUrl, setServerUrl] = useState('https://623a7d62937c60c507.gradio.live/');
+  const [serverUrl, setServerUrl] = useState('https://01aa370f95b7ee9914.gradio.live/');
   const [patientName, setPatientName] = useState('Rural Resident');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -101,13 +101,13 @@ export const XrayAnalyzerModal: React.FC<XrayAnalyzerModalProps> = ({ isOpen, on
               type="text"
               value={serverUrl}
               onChange={(e) => setServerUrl(e.target.value)}
-              placeholder="https://623a7d62937c60c507.gradio.live/"
+              placeholder="https://01aa370f95b7ee9914.gradio.live/"
               className="flex-1 text-xs font-mono font-black p-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-800"
             />
             <div className="flex space-x-1.5 shrink-0">
               <button
                 type="button"
-                onClick={() => setServerUrl('https://623a7d62937c60c507.gradio.live/')}
+                onClick={() => setServerUrl('https://01aa370f95b7ee9914.gradio.live/')}
                 className={`px-3 py-2 text-xs font-black rounded-xl border ${
                   serverUrl.includes('gradio.live')
                     ? 'bg-forest-800 text-white border-forest-900'

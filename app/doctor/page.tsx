@@ -1,20 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Stethoscope, Activity, RefreshCw, Ticket } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { AppointmentList } from '@/components/doctor/AppointmentList';
 import { PatientDetailPanel } from '@/components/doctor/PatientDetailPanel';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { MockPatient } from '@/lib/mock-data';
 import { Language, dictionaries } from '@/lib/i18n/dictionary';
+import { RefreshCw, Activity, Ticket } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function DoctorDashboard() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
-  const [patients, setPatients] = useState<MockPatient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<MockPatient | null>(null);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
 
   const dict = dictionaries[currentLang] || dictionaries.en;
 
@@ -25,14 +26,12 @@ export default function DoctorDashboard() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setPatients(data);
-        if (data.length > 0) {
+        if (data.length > 0 && !selectedPatient) {
           setSelectedPatient(data[0]);
-        } else {
-          setSelectedPatient(null);
         }
       }
     } catch (err) {
-      console.error("Failed to load live doctor queue:", err);
+      console.error("Failed to fetch appointments:", err);
     } finally {
       setIsLoading(false);
     }
@@ -48,25 +47,24 @@ export default function DoctorDashboard() {
 
       <ProtectedRoute allowedRole="DOCTOR">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
-          {/* Doctor Header Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border-4 border-sand-300 shadow-md">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-2xl bg-forest-800 text-white flex items-center justify-center font-black shrink-0 shadow-md">
-                <Stethoscope className="w-9 h-9 text-emerald-300" />
+          
+          {/* DOCTOR DASHBOARD HEADER */}
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border-4 border-sand-300 shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <div className="flex items-center space-x-3 mb-2">
+                <span className="px-3.5 py-1 bg-emerald-200 text-forest-950 text-xs font-black rounded-full border border-emerald-400 uppercase">
+                  DOCTOR MEDICAL PORTAL
+                </span>
+                <span className="text-sm font-black text-slate-600 font-mono">
+                  {user?.email || 'Logged in via Supabase'}
+                </span>
               </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-3xl sm:text-4xl font-black text-slate-950">
-                    {dict.doctorDashboard}
-                  </h1>
-                  <span className="px-3 py-1 bg-emerald-200 text-forest-950 text-sm font-black rounded-full border border-emerald-400">
-                    Dr. M. Kulkarni (MBBS, MD)
-                  </span>
-                </div>
-                <p className="text-base sm:text-lg text-slate-800 font-extrabold mt-1">
-                  District Hospital Tele-Health Command • Satara & Pune District Rural Clusters
-                </p>
-              </div>
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-950">
+                {dict.doctorDashboard}
+              </h1>
+              <p className="text-base text-slate-700 font-extrabold mt-1">
+                Real-time patient triage queue, AI medical summaries, and electronic prescription issuing.
+              </p>
             </div>
 
             <div className="flex items-center space-x-3 shrink-0">
@@ -92,7 +90,7 @@ export default function DoctorDashboard() {
               <Ticket className="w-16 h-16 text-slate-400 mx-auto" />
               <h3 className="text-2xl font-black text-slate-950">No Active Token Tickets in Queue</h3>
               <p className="text-base font-extrabold text-slate-700 max-w-md mx-auto">
-                Preloaded mock patients have been cleared. When patients or ASHA workers issue unique token tickets, they will appear here in real-time.
+                When patients or ASHA workers issue unique token tickets, they will appear here in real-time.
               </p>
             </div>
           ) : (
